@@ -36,7 +36,8 @@ public static class HexMetrics
 	/// Corner coordinates for a hexagon with two corners at top and bottom.
 	/// First corner is duplicated at the end to simplify wraparound.
 	/// </summary>
-	static Vector3[] corners = {
+	static Vector3[] corners = 
+	{
 		new Vector3(0f, 0f, outerRadius),
 		new Vector3(innerRadius, 0f, 0.5f * outerRadius),
 		new Vector3(innerRadius, 0f, -0.5f * outerRadius),
@@ -51,6 +52,18 @@ public static class HexMetrics
 	/// would produce too coherent results.
 	/// </summary>
 	static HexHash[] hashGrid;
+
+	/// <summary>
+	/// Probability thresholds for urban features at low, medium and high density levels.
+	/// In each triplet, the first number represents the threshold for high density buildings,
+	/// the second for medium density, and the third for low density buildings.
+	/// </summary>
+	static float[][] featureThresholds = 
+	{
+		new float[] {0.0f, 0.0f, 0.4f},
+		new float[] {0.0f, 0.4f, 0.6f},
+		new float[] {0.4f, 0.6f, 0.8f}
+	};
 
 	/// <summary>
 	/// Displaces a vertex or vector by a random value taken from 
@@ -171,5 +184,10 @@ public static class HexMetrics
 			z += hashGridSize;
 		}
 		return hashGrid[x + z * hashGridSize];
+	}
+
+	public static float[] GetFeatureThresholds(int level)
+	{
+		return featureThresholds[level];
 	}
 }

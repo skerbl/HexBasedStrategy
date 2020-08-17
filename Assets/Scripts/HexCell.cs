@@ -85,7 +85,37 @@ public class HexCell : MonoBehaviour
 		}
 	}
 
-	int urbanLevel;
+	public int FarmLevel
+	{
+		get
+		{
+			return farmLevel;
+		}
+		set
+		{
+			if (farmLevel != value)
+			{
+				farmLevel = value;
+				RefreshSelfOnly();
+			}
+		}
+	}
+
+	public int PlantLevel
+	{
+		get
+		{
+			return plantLevel;
+		}
+		set
+		{
+			if (plantLevel != value)
+			{
+				plantLevel = value;
+				RefreshSelfOnly();
+			}
+		}
+	}
 
 	public Vector3 Position
 	{
@@ -227,9 +257,13 @@ public class HexCell : MonoBehaviour
 	private Color color;
 	private int elevation = int.MinValue;
 	private int waterLevel;
+	private int urbanLevel;
+	private int farmLevel;
+	private int plantLevel;
 	private bool hasIncomingRiver = false;
 	private bool hasOutgoingRiver = false;
-	private HexDirection incomingRiver, outgoingRiver;
+	private HexDirection incomingRiver;
+	private HexDirection outgoingRiver;
 
 	public HexCell GetNeighbor(HexDirection direction)
 	{
