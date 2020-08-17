@@ -77,13 +77,20 @@ public class HexFeatureManager : MonoBehaviour
 		instance.SetParent(container, false);
 	}
 
-	public void AddWall(EdgeVertices near, HexCell nearCell, EdgeVertices far, HexCell farCell)
+	public void AddWall(EdgeVertices near, HexCell nearCell, EdgeVertices far, HexCell farCell, bool hasRiver, bool hasRoad)
 	{
 		if (nearCell.Walled != farCell.Walled)
 		{
 			AddWallSegment(near.v1, far.v1, near.v2, far.v2);
-			AddWallSegment(near.v2, far.v2, near.v3, far.v3);
-			AddWallSegment(near.v3, far.v3, near.v4, far.v4);
+			if (hasRiver || hasRoad)
+			{
+				// Leave a gap.
+			}
+			else
+			{
+				AddWallSegment(near.v2, far.v2, near.v3, far.v3);
+				AddWallSegment(near.v3, far.v3, near.v4, far.v4);
+			}
 			AddWallSegment(near.v4, far.v4, near.v5, far.v5);
 		}
 	}
@@ -131,8 +138,13 @@ public class HexFeatureManager : MonoBehaviour
 
 	void AddWallSegment(Vector3 nearLeft, Vector3 farLeft, Vector3 nearRight, Vector3 farRight)
 	{
-		Vector3 left = Vector3.Lerp(nearLeft, farLeft, 0.5f);
-		Vector3 right = Vector3.Lerp(nearRight, farRight, 0.5f);
+		nearLeft = HexMetrics.Perturb(nearLeft);
+		farLeft = HexMetrics.Perturb(farLeft);
+		nearRight = HexMetrics.Perturb(nearRight);
+		farRight = HexMetrics.Perturb(farRight);
+
+		Vector3 left = HexMetrics.WallLerp(nearLeft, farLeft);
+		Vector3 right = HexMetrics.WallLerp(nearRight, farRight);
 
 		Vector3 leftThicknessOffset = HexMetrics.WallThicknessOffset(nearLeft, farLeft);
 		Vector3 rightThicknessOffset = HexMetrics.WallThicknessOffset(nearRight, farRight);
@@ -145,7 +157,7 @@ public class HexFeatureManager : MonoBehaviour
 		v2 = v4 = right - rightThicknessOffset;
 		v3.y = leftTop;
 		v4.y = rightTop;
-		walls.AddQuad(v1, v2, v3, v4);
+		walls.AddQuadUnperturbed(v1, v2, v3, v4);
 
 		Vector3 t1 = v3, t2 = v4;
 
@@ -153,9 +165,9 @@ public class HexFeatureManager : MonoBehaviour
 		v2 = v4 = right + rightThicknessOffset;
 		v3.y = leftTop;
 		v4.y = rightTop;
-		walls.AddQuad(v2, v1, v4, v3);
+		walls.AddQuadUnperturbed(v2, v1, v4, v3);
 
-		walls.AddQuad(t1, t2, v3, v4);
+		walls.AddQuadUnperturbed(t1, t2, v3, v4);
 	}
 
 	void AddWallSegment(
