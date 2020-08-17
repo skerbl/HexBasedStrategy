@@ -23,7 +23,8 @@ public class HexMapEditor : MonoBehaviour
 	private int activeWaterLevel;
 	private int activeUrbanLevel;
 	private int brushSize;
-	private OptionalToggle riverMode, roadMode;
+	private OptionalToggle riverMode = OptionalToggle.Ignore;
+	private OptionalToggle roadMode = OptionalToggle.Ignore;
 	private bool isDrag;
 	private HexDirection dragDirection;
 	private HexCell previousCell;
