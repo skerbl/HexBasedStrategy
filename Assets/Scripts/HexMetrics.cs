@@ -21,11 +21,14 @@ public static class HexMetrics
 
 	public static Texture2D noiseSource;
 	public const float noiseScale = 0.003f;
-	public const float cellPerturbStrength = 4f;
+	public const float cellPerturbStrength = 0f; //4f;
 	public const float elevationPerturbStrength = 1.5f;
 
 	public const float streamBedElevationOffset = -1.75f;
 	public const float waterElevationOffset = -0.5f;
+
+	public const float wallHeight = 3f;
+	public const float wallThickness = 0.75f;
 
 	public const int chunkSizeX = 5, chunkSizeZ = 5;
 
@@ -189,5 +192,14 @@ public static class HexMetrics
 	public static float[] GetFeatureThresholds(int level)
 	{
 		return featureThresholds[level];
+	}
+
+	public static Vector3 WallThicknessOffset(Vector3 near, Vector3 far)
+	{
+		Vector3 offset;
+		offset.x = far.x - near.x;
+		offset.y = 0f;
+		offset.z = far.z - near.z;
+		return offset.normalized * (wallThickness * 0.5f);
 	}
 }

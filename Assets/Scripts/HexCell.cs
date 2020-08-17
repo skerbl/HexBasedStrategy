@@ -117,6 +117,22 @@ public class HexCell : MonoBehaviour
 		}
 	}
 
+	public bool Walled
+	{
+		get
+		{
+			return walled;
+		}
+		set
+		{
+			if (walled != value)
+			{
+				walled = value;
+				Refresh();
+			}
+		}
+	}
+
 	public Vector3 Position
 	{
 		get
@@ -262,6 +278,7 @@ public class HexCell : MonoBehaviour
 	private int plantLevel;
 	private bool hasIncomingRiver = false;
 	private bool hasOutgoingRiver = false;
+	private bool walled = false;
 	private HexDirection incomingRiver;
 	private HexDirection outgoingRiver;
 
