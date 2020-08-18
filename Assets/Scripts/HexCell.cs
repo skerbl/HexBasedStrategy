@@ -502,48 +502,87 @@ public class HexCell : MonoBehaviour
 
 	public void Save(BinaryWriter writer)
 	{
-		writer.Write(terrainTypeIndex);
-		writer.Write(elevation);
-		writer.Write(waterLevel);
-		writer.Write(urbanLevel);
-		writer.Write(farmLevel);
-		writer.Write(plantLevel);
-		writer.Write(specialIndex);
+		writer.Write((byte)terrainTypeIndex);
+		writer.Write((byte)elevation);
+		writer.Write((byte)waterLevel);
+		writer.Write((byte)urbanLevel);
+		writer.Write((byte)farmLevel);
+		writer.Write((byte)plantLevel);
+		writer.Write((byte)specialIndex);
 		writer.Write(walled);
 
-		writer.Write(hasIncomingRiver);
-		writer.Write((int)incomingRiver);
+		if (hasIncomingRiver)
+		{
+			// Use eighth bit (128) to indicate whether a river exists
+			writer.Write((byte)(incomingRiver + 128));
+		}
+		else
+		{
+			// Write zeroes if it doesn't
+			writer.Write((byte)0);
+		}
 
-		writer.Write(hasOutgoingRiver);
-		writer.Write((int)outgoingRiver);
+		if (hasOutgoingRiver)
+		{
+			writer.Write((byte)(outgoingRiver + 128));
+		}
+		else
+		{
+			writer.Write((byte)0);
+		}
 
+		// Represent the road booleans as a bitmask, one bit per direction
+		int roadFlags = 0;
 		for (int i = 0; i < roads.Length; i++)
 		{
-			writer.Write(roads[i]);
+			if (roads[i])
+			{
+				roadFlags |= 1 << i;
+			}
 		}
+		writer.Write((byte)roadFlags);
 	}
 
 	public void Load(BinaryReader reader)
 	{
-		terrainTypeIndex = reader.ReadInt32();
-		elevation = reader.ReadInt32();
+		terrainTypeIndex = reader.ReadByte();
+		elevation = reader.ReadByte();
 		RefreshPosition();
-		waterLevel = reader.ReadInt32();
-		urbanLevel = reader.ReadInt32();
-		farmLevel = reader.ReadInt32();
-		plantLevel = reader.ReadInt32();
-		specialIndex = reader.ReadInt32();
+		waterLevel = reader.ReadByte();
+		urbanLevel = reader.ReadByte();
+		farmLevel = reader.ReadByte();
+		plantLevel = reader.ReadByte();
+		specialIndex = reader.ReadByte();
 		walled = reader.ReadBoolean();
 
-		hasIncomingRiver = reader.ReadBoolean();
-		incomingRiver = (HexDirection)reader.ReadInt32();
+		byte riverData = reader.ReadByte();
+		if (riverData >= 128)
+		{
+			// Subtract 128 to get the direction
+			hasIncomingRiver = true;
+			incomingRiver = (HexDirection)(riverData - 128);
+		}
+		else
+		{
+			hasIncomingRiver = false;
+		}
 
-		hasOutgoingRiver = reader.ReadBoolean();
-		outgoingRiver = (HexDirection)reader.ReadInt32();
+		riverData = reader.ReadByte();
+		if (riverData >= 128)
+		{
+			hasOutgoingRiver = true;
+			outgoingRiver = (HexDirection)(riverData - 128);
+		}
+		else
+		{
+			hasOutgoingRiver = false;
+		}
 
+		int roadFlags = reader.ReadByte();
 		for (int i = 0; i < roads.Length; i++)
 		{
-			roads[i] = reader.ReadBoolean();
+			// mask all other bits with bitwise AND with the corresponding number
+			roads[i] = (roadFlags & (1 << i)) != 0;
 		}
 	}
 }
