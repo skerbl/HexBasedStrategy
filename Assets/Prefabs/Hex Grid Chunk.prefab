@@ -311,6 +311,7 @@ MonoBehaviour:
     - {fileID: 3759201218604667081, guid: 99efedb8f7055e84595496c234c7cd47, type: 3}
     - {fileID: 3759201218604667081, guid: 48c8570693068504b963b33eb414f676, type: 3}
   walls: {fileID: 738523145855043943}
+  wallTower: {fileID: 6260113326848046287, guid: 3d4c9ded046f48940a51cbecb65b0825, type: 3}
 --- !u!1 &5838545278529832526
 GameObject:
   m_ObjectHideFlags: 0
