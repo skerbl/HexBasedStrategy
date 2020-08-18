@@ -12,6 +12,21 @@ public class HexCell : MonoBehaviour
 	[SerializeField]
 	bool[] roads = default;
 
+	private Color color;
+	private int elevation = int.MinValue;
+	private int waterLevel;
+	private int urbanLevel;
+	private int farmLevel;
+	private int plantLevel;
+	private bool hasIncomingRiver = false;
+	private bool hasOutgoingRiver = false;
+	private bool walled = false;
+	private HexDirection incomingRiver;
+	private HexDirection outgoingRiver;
+	private int specialIndex;
+
+	public RectTransform UiRect { get; set; }
+
 	public int Elevation
 	{
 		get
@@ -268,19 +283,32 @@ public class HexCell : MonoBehaviour
 		}
 	}
 
-	public RectTransform UiRect { get; set; }
+	public int SpecialIndex
+	{
+		get
+		{
+			return specialIndex;
+		}
+		set
+		{
+			if (specialIndex != value && !HasRiver)
+			{
+				specialIndex = value;
 
-	private Color color;
-	private int elevation = int.MinValue;
-	private int waterLevel;
-	private int urbanLevel;
-	private int farmLevel;
-	private int plantLevel;
-	private bool hasIncomingRiver = false;
-	private bool hasOutgoingRiver = false;
-	private bool walled = false;
-	private HexDirection incomingRiver;
-	private HexDirection outgoingRiver;
+				// Remove roads for now. Maybe some special features will allow roads?
+				RemoveRoads();
+				RefreshSelfOnly();
+			}
+		}
+	}
+
+	public bool IsSpecial
+	{
+		get
+		{
+			return specialIndex > 0;
+		}
+	}
 
 	public HexCell GetNeighbor(HexDirection direction)
 	{
@@ -334,9 +362,13 @@ public class HexCell : MonoBehaviour
 		hasOutgoingRiver = true;
 		outgoingRiver = direction;
 
+		// A river will also wash away special features
+		specialIndex = 0;
+
 		neighbor.RemoveIncomingRiver();
 		neighbor.hasIncomingRiver = true;
 		neighbor.incomingRiver = direction.Opposite();
+		neighbor.specialIndex = 0;
 
 		// This also refreshes the current and neighboring cell, 
 		// regardless of whether a road was actually removed.
@@ -384,7 +416,10 @@ public class HexCell : MonoBehaviour
 
 	public void AddRoad(HexDirection direction)
 	{
-		if (!roads[(int)direction] && !HasRiverThroughEdge(direction) && GetElevationDifference(direction) <= 1)
+		if (
+			!roads[(int)direction] && !HasRiverThroughEdge(direction) && !IsSpecial && 
+			!GetNeighbor(direction).IsSpecial && GetElevationDifference(direction) <= 1
+		)
 		{
 			SetRoad((int)direction, true);
 		}
