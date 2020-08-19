@@ -34,6 +34,22 @@ public class HexMapEditor : MonoBehaviour
 	private HexDirection dragDirection;
 	private HexCell previousCell;
 
+	private int mapFileVersion = 1;
+
+	private void Awake()
+	{
+		SetRiverMode((int)OptionalToggle.Ignore);
+		SetRoadMode((int)OptionalToggle.Ignore);
+		SetWalledMode((int)OptionalToggle.Ignore);
+	}
+
+	private void OnEnable()
+	{
+		SetRiverMode((int)OptionalToggle.Ignore);
+		SetRoadMode((int)OptionalToggle.Ignore);
+		SetWalledMode((int)OptionalToggle.Ignore);
+	}
+
 	void Update()
 	{
 		if (Input.GetMouseButton(0) && !EventSystem.current.IsPointerOverGameObject())
@@ -264,7 +280,7 @@ public class HexMapEditor : MonoBehaviour
 		using (BinaryWriter writer = new BinaryWriter(File.Open(path, FileMode.Create)))
 		{
 			// Placeholder for save file versioning
-			writer.Write(0);
+			writer.Write(mapFileVersion);
 			hexGrid.Save(writer);
 		}
 	}
@@ -277,9 +293,10 @@ public class HexMapEditor : MonoBehaviour
 			// Read save file version first
 			int header = reader.ReadInt32();
 
-			if (header == 0)
+			if (header <= mapFileVersion)
 			{
-				hexGrid.Load(reader);
+				hexGrid.Load(reader, header);
+				HexMapCamera.ValidatePosition();
 			}
 			else
 			{
