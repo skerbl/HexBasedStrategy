@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
+using System.IO;
+
 
 public class HexMapEditor : MonoBehaviour
 {
@@ -8,14 +10,12 @@ public class HexMapEditor : MonoBehaviour
 		Ignore, Yes, No
 	}
 
-	[SerializeField]
-	Color[] colors = default;
+	public static int mapFileVersion = 1;
 
 	[SerializeField]
 	HexGrid hexGrid = default;
 
-	private Color activeColor;
-	private bool applyColor;
+	private int activeTerrainTypeIndex;
 	private bool applyElevation = true;
 	private bool applyWaterLevel = true;
 	private bool applyUrbanLevel = false;
@@ -36,9 +36,18 @@ public class HexMapEditor : MonoBehaviour
 	private HexDirection dragDirection;
 	private HexCell previousCell;
 
-	void Awake()
+	private void Awake()
 	{
-		SelectColor(0);
+		SetRiverMode((int)OptionalToggle.Ignore);
+		SetRoadMode((int)OptionalToggle.Ignore);
+		SetWalledMode((int)OptionalToggle.Ignore);
+	}
+
+	private void OnEnable()
+	{
+		SetRiverMode((int)OptionalToggle.Ignore);
+		SetRoadMode((int)OptionalToggle.Ignore);
+		SetWalledMode((int)OptionalToggle.Ignore);
 	}
 
 	void Update()
@@ -90,13 +99,9 @@ public class HexMapEditor : MonoBehaviour
 		isDrag = false;
 	}
 
-	public void SelectColor(int index)
+	public void SetTerrainTypeIndex(int index)
 	{
-		applyColor = index >= 0;
-		if (applyColor)
-		{
-			activeColor = colors[index];
-		}
+		activeTerrainTypeIndex = index;
 	}
 
 	public void SetApplyElevation(bool toggle)
@@ -210,9 +215,9 @@ public class HexMapEditor : MonoBehaviour
 	{
 		if (cell)
 		{
-			if (applyColor)
+			if (activeTerrainTypeIndex >= 0)
 			{
-				cell.Color = activeColor;
+				cell.TerrainTypeIndex = activeTerrainTypeIndex;
 			}
 			if (applyElevation)
 			{
