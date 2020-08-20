@@ -10,6 +10,8 @@ public class HexMapEditor : MonoBehaviour
 		Ignore, Yes, No
 	}
 
+	public static int mapFileVersion = 1;
+
 	[SerializeField]
 	HexGrid hexGrid = default;
 
@@ -33,8 +35,6 @@ public class HexMapEditor : MonoBehaviour
 	private bool isDrag;
 	private HexDirection dragDirection;
 	private HexCell previousCell;
-
-	private int mapFileVersion = 1;
 
 	private void Awake()
 	{
@@ -270,37 +270,6 @@ public class HexMapEditor : MonoBehaviour
 						otherCell.AddRoad(dragDirection);
 					}
 				}
-			}
-		}
-	}
-
-	public void Save()
-	{
-		string path = Path.Combine(Application.persistentDataPath, "test.map");
-		using (BinaryWriter writer = new BinaryWriter(File.Open(path, FileMode.Create)))
-		{
-			// Placeholder for save file versioning
-			writer.Write(mapFileVersion);
-			hexGrid.Save(writer);
-		}
-	}
-
-	public void Load()
-	{
-		string path = Path.Combine(Application.persistentDataPath, "test.map");
-		using (BinaryReader reader = new BinaryReader(File.Open(path, FileMode.Open)))
-		{
-			// Read save file version first
-			int header = reader.ReadInt32();
-
-			if (header <= mapFileVersion)
-			{
-				hexGrid.Load(reader, header);
-				HexMapCamera.ValidatePosition();
-			}
-			else
-			{
-				Debug.LogWarning("Unknown map format " + header);
 			}
 		}
 	}
