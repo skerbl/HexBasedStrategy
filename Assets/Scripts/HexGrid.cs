@@ -21,9 +21,6 @@ public class HexGrid : MonoBehaviour
 
 	public int seed;
 
-	[SerializeField]
-	Color[] colors = default;
-
 	private HexCell[] cells;
 	private HexGridChunk[] chunks;
 	private int chunkCountX;
@@ -33,9 +30,17 @@ public class HexGrid : MonoBehaviour
 	{
 		HexMetrics.noiseSource = noiseSource;
 		HexMetrics.InitializeHashGrid(seed);
-		HexMetrics.colors = colors;
 
 		CreateMap(cellCountX, cellCountZ);
+	}
+
+	void OnEnable()
+	{
+		if (!HexMetrics.noiseSource)
+		{
+			HexMetrics.noiseSource = noiseSource;
+			HexMetrics.InitializeHashGrid(seed);
+		}
 	}
 
 	public bool CreateMap(int x, int z)
@@ -89,16 +94,6 @@ public class HexGrid : MonoBehaviour
 			{
 				CreateCell(x, z, i++);
 			}
-		}
-	}
-
-	void OnEnable()
-	{
-		if (!HexMetrics.noiseSource)
-		{
-			HexMetrics.noiseSource = noiseSource;
-			HexMetrics.InitializeHashGrid(seed);
-			HexMetrics.colors = colors;
 		}
 	}
 
