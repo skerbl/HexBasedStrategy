@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using System.IO;
+using UnityEngine.UI;
 
 public class HexCell : MonoBehaviour
 {
@@ -26,7 +27,34 @@ public class HexCell : MonoBehaviour
 	private HexDirection outgoingRiver;
 	private int specialIndex;
 
+	private int distance;
+
 	public RectTransform UiRect { get; set; }
+
+	/// <summary>
+	/// Connects the cell with the previous one in a path.
+	/// Used to recontruct the path after finding the destination.
+	/// </summary>
+	public HexCell PathFrom { get; set; }
+
+	/// <summary>
+	/// Saves the unmodified direct distance between the cell and the destination.
+	/// Used to bias searching and pathfinding towards the destination.
+	/// </summary>
+	public int SearchHeuristic { get; set; }
+
+	/// <summary>
+	/// Points to the next cell with the same priority, forming a linked list.
+	/// </summary>
+	public HexCell NextWithSamePriority { get; set; }
+
+	public int SearchPriority
+	{
+		get
+		{
+			return distance + SearchHeuristic;
+		}
+	}
 
 	public int Elevation
 	{
@@ -298,6 +326,38 @@ public class HexCell : MonoBehaviour
 		{
 			return specialIndex > 0;
 		}
+	}
+
+	public int Distance
+	{
+		get
+		{
+			return distance;
+		}
+		set
+		{
+			distance = value;
+			UpdateDistanceLabel();
+		}
+	}
+
+	void UpdateDistanceLabel()
+	{
+		Text label = UiRect.GetComponent<Text>();
+		label.text = distance == int.MaxValue ? "" : distance.ToString();
+	}
+
+	public void DisableHighlight()
+	{
+		Image highlight = UiRect.GetChild(0).GetComponent<Image>();
+		highlight.enabled = false;
+	}
+
+	public void EnableHighlight(Color color)
+	{
+		Image highlight = UiRect.GetChild(0).GetComponent<Image>();
+		highlight.color = color;
+		highlight.enabled = true;
 	}
 
 	public HexCell GetNeighbor(HexDirection direction)

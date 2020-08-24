@@ -15,6 +15,10 @@ public class HexMapEditor : MonoBehaviour
 	[SerializeField]
 	HexGrid hexGrid = default;
 
+	[SerializeField]
+	Material terrainMaterial = default;
+
+	private bool editMode;
 	private int activeTerrainTypeIndex;
 	private bool applyElevation = true;
 	private bool applyWaterLevel = true;
@@ -35,9 +39,13 @@ public class HexMapEditor : MonoBehaviour
 	private bool isDrag;
 	private HexDirection dragDirection;
 	private HexCell previousCell;
+	private HexCell searchFromCell;
+	private HexCell searchToCell;
 
 	private void Awake()
 	{
+		terrainMaterial.DisableKeyword("GRID_ON");
+
 		SetRiverMode((int)OptionalToggle.Ignore);
 		SetRoadMode((int)OptionalToggle.Ignore);
 		SetWalledMode((int)OptionalToggle.Ignore);
@@ -77,7 +85,30 @@ public class HexMapEditor : MonoBehaviour
 			{
 				isDrag = false;
 			}
-			EditCells(currentCell);
+
+			if (editMode)
+			{
+				EditCells(currentCell);
+			}
+			else if (Input.GetKey(KeyCode.LeftShift) && searchToCell != currentCell)
+			{
+				if (searchFromCell)
+				{
+					searchFromCell.DisableHighlight();
+				}
+				searchFromCell = currentCell;
+				searchFromCell.EnableHighlight(Color.blue);
+
+				if (searchToCell)
+				{
+					hexGrid.FindPath(searchFromCell, searchToCell);
+				}
+			}
+			else if (searchFromCell && searchFromCell != currentCell)
+			{
+				hexGrid.FindPath(searchFromCell, currentCell);
+			}
+
 			previousCell = currentCell;
 		}
 		else
@@ -184,9 +215,22 @@ public class HexMapEditor : MonoBehaviour
 		roadMode = (OptionalToggle)mode;
 	}
 
-	public void ShowUI(bool visible)
+	public void ShowGrid(bool visible)
 	{
-		hexGrid.ShowUI(visible);
+		if (visible)
+		{
+			terrainMaterial.EnableKeyword("GRID_ON");
+		}
+		else
+		{
+			terrainMaterial.DisableKeyword("GRID_ON");
+		}
+	}
+
+	public void SetEditMode(bool toggle)
+	{
+		editMode = toggle;
+		hexGrid.ShowUI(!toggle);
 	}
 
 	void EditCells(HexCell center)
