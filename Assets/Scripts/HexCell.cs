@@ -337,14 +337,21 @@ public class HexCell : MonoBehaviour
 		set
 		{
 			distance = value;
-			UpdateDistanceLabel();
 		}
 	}
 
-	void UpdateDistanceLabel()
+	/// <summary>
+	/// Indicates the part of the search phase this cell is in.
+	/// A value of 0 indicates that the cell has not yet been visited.
+	/// A value of 1 indicates that the cell is currently part of the search frontier.
+	/// A value of 2 indicates that the cell has already been taken out of the frontier.
+	/// </summary>
+	public int SearchPhase { get; set; }
+
+	public void SetLabel(string text)
 	{
 		Text label = UiRect.GetComponent<Text>();
-		label.text = distance == int.MaxValue ? "" : distance.ToString();
+		label.text = text;
 	}
 
 	public void DisableHighlight()
