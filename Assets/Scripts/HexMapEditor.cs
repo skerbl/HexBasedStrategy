@@ -10,7 +10,7 @@ public class HexMapEditor : MonoBehaviour
 		Ignore, Yes, No
 	}
 
-	public static int mapFileVersion = 1;
+	public static int mapFileVersion = 2;
 
 	[SerializeField]
 	HexGrid hexGrid = default;
@@ -18,7 +18,6 @@ public class HexMapEditor : MonoBehaviour
 	[SerializeField]
 	Material terrainMaterial = default;
 
-	private bool editMode;
 	private int activeTerrainTypeIndex;
 	private bool applyElevation = true;
 	private bool applyWaterLevel = true;
@@ -39,8 +38,6 @@ public class HexMapEditor : MonoBehaviour
 	private bool isDrag;
 	private HexDirection dragDirection;
 	private HexCell previousCell;
-	private HexCell searchFromCell;
-	private HexCell searchToCell;
 
 	private void Awake()
 	{
@@ -49,6 +46,9 @@ public class HexMapEditor : MonoBehaviour
 		SetRiverMode((int)OptionalToggle.Ignore);
 		SetRoadMode((int)OptionalToggle.Ignore);
 		SetWalledMode((int)OptionalToggle.Ignore);
+		SetTerrainTypeIndex(0);
+
+		SetEditMode(false);
 	}
 
 	private void OnEnable()
@@ -60,23 +60,34 @@ public class HexMapEditor : MonoBehaviour
 
 	void Update()
 	{
-		if (Input.GetMouseButton(0) && !EventSystem.current.IsPointerOverGameObject())
+		if (!EventSystem.current.IsPointerOverGameObject())
 		{
-			HandleInput();
+			if (Input.GetMouseButton(0))
+			{
+				HandleInput();
+				return;
+			}
+			if (Input.GetKeyDown(KeyCode.U))
+			{
+				if (Input.GetKey(KeyCode.LeftShift))
+				{
+					DestroyUnit();
+				}
+				else
+				{
+					CreateUnit();
+				}
+				return;
+			}
 		}
-		else
-		{
-			previousCell = null;
-		}
+		previousCell = null;
 	}
 
 	void HandleInput()
 	{
-		Ray inputRay = Camera.main.ScreenPointToRay(Input.mousePosition);
-		RaycastHit hit;
-		if (Physics.Raycast(inputRay, out hit))
+		HexCell currentCell = GetCellUnderCursor();
+		if (currentCell)
 		{
-			HexCell currentCell = hexGrid.GetCell(hit.point);
 			if (previousCell && previousCell != currentCell)
 			{
 				ValidateDrag(currentCell);
@@ -86,28 +97,7 @@ public class HexMapEditor : MonoBehaviour
 				isDrag = false;
 			}
 
-			if (editMode)
-			{
-				EditCells(currentCell);
-			}
-			else if (Input.GetKey(KeyCode.LeftShift) && searchToCell != currentCell)
-			{
-				if (searchFromCell)
-				{
-					searchFromCell.DisableHighlight();
-				}
-				searchFromCell = currentCell;
-				searchFromCell.EnableHighlight(Color.blue);
-
-				if (searchToCell)
-				{
-					hexGrid.FindPath(searchFromCell, searchToCell);
-				}
-			}
-			else if (searchFromCell && searchFromCell != currentCell)
-			{
-				hexGrid.FindPath(searchFromCell, currentCell);
-			}
+			EditCells(currentCell);
 
 			previousCell = currentCell;
 		}
@@ -115,6 +105,11 @@ public class HexMapEditor : MonoBehaviour
 		{
 			previousCell = null;
 		}
+	}
+
+	HexCell GetCellUnderCursor()
+	{
+		return hexGrid.GetCell(Camera.main.ScreenPointToRay(Input.mousePosition));
 	}
 
 	void ValidateDrag(HexCell currentCell)
@@ -229,8 +224,7 @@ public class HexMapEditor : MonoBehaviour
 
 	public void SetEditMode(bool toggle)
 	{
-		editMode = toggle;
-		hexGrid.ShowUI(!toggle);
+		enabled = toggle;
 	}
 
 	void EditCells(HexCell center)
@@ -315,6 +309,24 @@ public class HexMapEditor : MonoBehaviour
 					}
 				}
 			}
+		}
+	}
+
+	void CreateUnit()
+	{
+		HexCell cell = GetCellUnderCursor();
+		if (cell && !cell.Unit)
+		{
+			hexGrid.AddUnit(Instantiate(HexUnit.unitPrefab), cell, Random.Range(0f, 360f));
+		}
+	}
+
+	void DestroyUnit()
+	{
+		HexCell cell = GetCellUnderCursor();
+		if (cell && cell.Unit)
+		{
+			hexGrid.RemoveUnit(cell.Unit);
 		}
 	}
 }
