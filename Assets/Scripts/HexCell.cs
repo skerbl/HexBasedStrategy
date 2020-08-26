@@ -48,6 +48,11 @@ public class HexCell : MonoBehaviour
 	/// </summary>
 	public HexCell NextWithSamePriority { get; set; }
 
+	/// <summary>
+	/// A reference to the unit that is currently occupying the cell.
+	/// </summary>
+	public HexUnit Unit { get; set; }
+
 	public int SearchPriority
 	{
 		get
@@ -552,11 +557,21 @@ public class HexCell : MonoBehaviour
 				}
 			}
 		}
+
+		if (Unit)
+		{
+			Unit.ValidateLocation();
+		}
 	}
 
 	void RefreshSelfOnly()
 	{
 		chunk.Refresh();
+
+		if (Unit)
+		{
+			Unit.ValidateLocation();
+		}
 	}
 
 	public void Save(BinaryWriter writer)
