@@ -29,6 +29,11 @@ public class HexCell : MonoBehaviour
 
 	private int distance;
 
+	/// <summary>
+	/// The index of this cell in the map's cell list and in the cell shader data.
+	/// </summary>
+	public int Index { get; set; }
+
 	public RectTransform UiRect { get; set; }
 
 	/// <summary>
@@ -52,6 +57,11 @@ public class HexCell : MonoBehaviour
 	/// A reference to the unit that is currently occupying the cell.
 	/// </summary>
 	public HexUnit Unit { get; set; }
+
+	/// <summary>
+	/// Holds data that gets passed to shaders for visual representation.
+	/// </summary>
+	public HexCellShaderData ShaderData { get; set; }
 
 	public int SearchPriority
 	{
@@ -191,7 +201,7 @@ public class HexCell : MonoBehaviour
 			if (terrainTypeIndex != value)
 			{
 				terrainTypeIndex = value;
-				Refresh();
+				ShaderData.RefreshTerrain(this);
 			}
 		}
 	}
