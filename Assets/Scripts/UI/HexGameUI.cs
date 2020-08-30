@@ -7,11 +7,21 @@ public class HexGameUI : MonoBehaviour
 	[SerializeField]
 	HexGrid grid = default;
 
+	[SerializeField]
+	HexTooltip tooltip = default;
+
 	private HexCell currentCell;
 	private HexUnit selectedUnit;
+	private Vector3 lastMousePosition;
+	private Vector3 currentMousePosition;
+	//private float tooltipTimer = .5f;
+	//private bool tooltipActive = false;
 
 	void Update()
 	{
+		lastMousePosition = currentMousePosition;
+		currentMousePosition = Input.mousePosition;
+
 		if (!EventSystem.current.IsPointerOverGameObject())
 		{
 			if (Input.GetMouseButtonDown(0))
@@ -29,6 +39,23 @@ public class HexGameUI : MonoBehaviour
 					DoPathfinding();
 				}
 			}
+			//else if ((currentMousePosition - lastMousePosition).sqrMagnitude <= 2)
+			//{
+			//	tooltipTimer -= Time.deltaTime;
+			//
+			//	if (tooltipTimer < 0 && !tooltipActive)
+			//	{
+			//		UpdateCurrentCell();
+			//		tooltip.ShowTooltip(currentCell);
+			//		tooltipActive = true;
+			//	}
+			//
+			//	if (UpdateCurrentCell())
+			//	{
+			//		tooltipTimer = 0.5f;
+			//		tooltipActive = false;
+			//	}
+			//}
 		}
 	}
 
@@ -42,7 +69,7 @@ public class HexGameUI : MonoBehaviour
 
 	bool UpdateCurrentCell()
 	{
-		HexCell cell = grid.GetCell(Camera.main.ScreenPointToRay(Input.mousePosition));
+		HexCell cell = grid.GetCell(Camera.main.ScreenPointToRay(currentMousePosition));
 		if (cell != currentCell)
 		{
 			currentCell = cell;
@@ -59,6 +86,7 @@ public class HexGameUI : MonoBehaviour
 		if (currentCell)
 		{
 			selectedUnit = currentCell.Unit;
+			tooltip.ShowInfoPanel(selectedUnit);
 		}
 	}
 
@@ -68,7 +96,7 @@ public class HexGameUI : MonoBehaviour
 		{
 			if (currentCell && selectedUnit.IsValidDestination(currentCell))
 			{
-				grid.FindPath(selectedUnit.Location, currentCell, 24);
+				grid.FindPath(selectedUnit.Location, currentCell, selectedUnit.MovementPoints);
 			}
 			else
 			{

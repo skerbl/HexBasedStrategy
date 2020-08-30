@@ -43,6 +43,9 @@ public class HexUnit : MonoBehaviour
 		}
 	}
 
+	public string Name { get; } = "Dummy Unit";
+	public int MovementPoints { get; } = 24;
+
 	private float orientation;
 	private HexCell location;
 
