@@ -26,8 +26,8 @@ public class HexCell : MonoBehaviour
 	private HexDirection incomingRiver;
 	private HexDirection outgoingRiver;
 	private int specialIndex;
-
 	private int distance;
+	private int visibility = 0;
 
 	/// <summary>
 	/// The index of this cell in the map's cell list and in the cell shader data.
@@ -62,6 +62,14 @@ public class HexCell : MonoBehaviour
 	/// Holds data that gets passed to shaders for visual representation.
 	/// </summary>
 	public HexCellShaderData ShaderData { get; set; }
+
+	public bool IsVisible
+	{
+		get
+		{
+			return visibility > 0;
+		}
+	}
 
 	public int SearchPriority
 	{
@@ -581,6 +589,24 @@ public class HexCell : MonoBehaviour
 		if (Unit)
 		{
 			Unit.ValidateLocation();
+		}
+	}
+
+	public void IncreaseVisibility()
+	{
+		visibility += 1;
+		if (visibility == 1)
+		{
+			ShaderData.RefreshVisibility(this);
+		}
+	}
+
+	public void DecreaseVisibility()
+	{
+		visibility -= 1;
+		if (visibility == 0)
+		{
+			ShaderData.RefreshVisibility(this);
 		}
 	}
 

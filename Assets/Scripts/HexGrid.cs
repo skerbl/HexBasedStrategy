@@ -419,6 +419,107 @@ public class HexGrid : MonoBehaviour
 		return false;
 	}
 
+	/// <summary>
+	/// Finds all cells that are visible from the starting cell.
+	/// Doesn't use search heuristics, so effectively it's Dijkstra's Shortest Path.
+	/// </summary>
+	/// <param name="fromCell">The starting cell for the visibility search</param>
+	/// <param name="range">The vision range (could be a unit, a spell, or a fixed installation).</param>
+	/// <returns>A list of visible cells.</returns>
+	List<HexCell> GetVisibleCells(HexCell fromCell, int range)
+	{
+		List<HexCell> visibleCells = ListPool<HexCell>.Get();
+
+		// Ensure that new search frontier is always larger than the previous one
+		searchFrontierPhase += 2;
+
+		if (searchFrontier == null)
+		{
+			searchFrontier = new HexCellPriorityQueue();
+		}
+		else
+		{
+			searchFrontier.Clear();
+		}
+
+		fromCell.SearchPhase = searchFrontierPhase;
+		fromCell.Distance = 0;
+		searchFrontier.Enqueue(fromCell);
+
+		while (searchFrontier.Count > 0)
+		{
+			// Cells taken out of the frontier will have a larger phase than the existing 
+			// frontier, but smaller than the fontier of the next search will have.
+			HexCell current = searchFrontier.Dequeue();
+			current.SearchPhase += 1;
+			visibleCells.Add(current);
+
+			for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+			{
+				HexCell neighbor = current.GetNeighbor(d);
+
+				// Cells that were already taken out of the frontier will be skipped
+				if (neighbor == null || neighbor.SearchPhase > searchFrontierPhase)
+				{
+					continue;
+				}
+
+				int distance = current.Distance + 1;
+				if (distance > range)
+				{
+					// Skip all cells that exceed the vision range
+					continue;
+				}
+
+				if (neighbor.SearchPhase < searchFrontierPhase)
+				{
+					neighbor.SearchPhase = searchFrontierPhase;
+					neighbor.Distance = distance;
+					neighbor.SearchHeuristic = 0;
+					searchFrontier.Enqueue(neighbor);
+				}
+				else if (distance < neighbor.Distance)
+				{
+					int oldPriority = neighbor.SearchPriority;
+					neighbor.Distance = distance;
+					searchFrontier.Change(neighbor, oldPriority);
+				}
+			}
+		}
+
+		return visibleCells;
+	}
+
+	/// <summary>
+	/// Increases the visibility in all cells around a center.
+	/// </summary>
+	/// <param name="fromCell">The center cell of the visible area.</param>
+	/// <param name="range">The radius of the visible area.</param>
+	public void IncreaseVisibility(HexCell fromCell, int range)
+	{
+		List<HexCell> cells = GetVisibleCells(fromCell, range);
+		for (int i = 0; i < cells.Count; i++)
+		{
+			cells[i].IncreaseVisibility();
+		}
+		ListPool<HexCell>.Add(cells);
+	}
+
+	/// <summary>
+	/// Decreases the visibility in all cells around a center.
+	/// </summary>
+	/// <param name="fromCell">The center cell of the visible area.</param>
+	/// <param name="range">The radius of the visible area.</param>
+	public void DecreaseVisibility(HexCell fromCell, int range)
+	{
+		List<HexCell> cells = GetVisibleCells(fromCell, range);
+		for (int i = 0; i < cells.Count; i++)
+		{
+			cells[i].DecreaseVisibility();
+		}
+		ListPool<HexCell>.Add(cells);
+	}
+
 	void ClearUnits()
 	{
 		for (int i = 0; i < units.Count; i++)
@@ -431,6 +532,7 @@ public class HexGrid : MonoBehaviour
 	public void AddUnit(HexUnit unit, HexCell location, float orientation)
 	{
 		units.Add(unit);
+		unit.Grid = this;
 		unit.transform.SetParent(transform, false);
 		unit.Location = location;
 		unit.Orientation = orientation;
