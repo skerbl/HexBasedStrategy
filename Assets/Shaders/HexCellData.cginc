@@ -1,6 +1,15 @@
 ﻿sampler2D _HexCellData;
 float4 _HexCellData_TexelSize;
 
+// Enables full visibility for everything when Edit Mode is active.
+float4 FilterCellData(float4 data) 
+{
+#if defined(HEX_MAP_EDIT_MODE)
+	data.x = 1;
+#endif
+	return data;
+}
+
 float4 GetCellData(appdata_full v, int index)
 {
 	// Construct UV-coordinates by dividing index by texture width (= multiply by _TexelSize). 
@@ -22,7 +31,7 @@ float4 GetCellData(appdata_full v, int index)
 	// GPU automatically converts the values into floats of range 0–1.
 	// Multiply by 255 to convert back to single byte integer.
 	data.w *= 255;
-	return data;
+	return FilterCellData(data);
 }
 
 float4 GetCellData(float2 cellDataCoordinates) 
@@ -30,5 +39,5 @@ float4 GetCellData(float2 cellDataCoordinates)
 	float2 uv = cellDataCoordinates + 0.5;
 	uv.x *= _HexCellData_TexelSize.x;
 	uv.y *= _HexCellData_TexelSize.y;
-	return tex2Dlod(_HexCellData, float4(uv, 0, 0));
+	return FilterCellData(tex2Dlod(_HexCellData, float4(uv, 0, 0)));
 }

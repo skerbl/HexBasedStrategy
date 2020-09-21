@@ -15,6 +15,7 @@
         CGPROGRAM
 
         #pragma surface surf Standard alpha vertex:vert
+        #pragma multi_compile _ HEX_MAP_EDIT_MODE
         #pragma target 3.0
 
         #include "Water.cginc"
