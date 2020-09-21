@@ -26,8 +26,13 @@ public class HexCell : MonoBehaviour
 	private HexDirection incomingRiver;
 	private HexDirection outgoingRiver;
 	private int specialIndex;
-
 	private int distance;
+	private int visibility = 0;
+
+	/// <summary>
+	/// The index of this cell in the map's cell list and in the cell shader data.
+	/// </summary>
+	public int Index { get; set; }
 
 	public RectTransform UiRect { get; set; }
 
@@ -52,6 +57,24 @@ public class HexCell : MonoBehaviour
 	/// A reference to the unit that is currently occupying the cell.
 	/// </summary>
 	public HexUnit Unit { get; set; }
+
+	/// <summary>
+	/// Holds data that gets passed to shaders for visual representation.
+	/// </summary>
+	public HexCellShaderData ShaderData { get; set; }
+
+	/// <summary>
+	/// Keeps track of whether this cell has been explored at some point.
+	/// </summary>
+	public bool IsExplored { get; set; }
+
+	public bool IsVisible
+	{
+		get
+		{
+			return visibility > 0;
+		}
+	}
 
 	public int SearchPriority
 	{
@@ -191,7 +214,7 @@ public class HexCell : MonoBehaviour
 			if (terrainTypeIndex != value)
 			{
 				terrainTypeIndex = value;
-				Refresh();
+				ShaderData.RefreshTerrain(this);
 			}
 		}
 	}
@@ -574,6 +597,25 @@ public class HexCell : MonoBehaviour
 		}
 	}
 
+	public void IncreaseVisibility()
+	{
+		visibility += 1;
+		if (visibility == 1)
+		{
+			IsExplored = true;
+			ShaderData.RefreshVisibility(this);
+		}
+	}
+
+	public void DecreaseVisibility()
+	{
+		visibility -= 1;
+		if (visibility == 0)
+		{
+			ShaderData.RefreshVisibility(this);
+		}
+	}
+
 	public void Save(BinaryWriter writer)
 	{
 		writer.Write((byte)terrainTypeIndex);
@@ -615,9 +657,10 @@ public class HexCell : MonoBehaviour
 			}
 		}
 		writer.Write((byte)roadFlags);
+		writer.Write(IsExplored);
 	}
 
-	public void Load(BinaryReader reader)
+	public void Load(BinaryReader reader, int header)
 	{
 		terrainTypeIndex = reader.ReadByte();
 		elevation = reader.ReadByte();
@@ -658,5 +701,8 @@ public class HexCell : MonoBehaviour
 			// mask all other bits with bitwise AND with the corresponding number
 			roads[i] = (roadFlags & (1 << i)) != 0;
 		}
+
+		IsExplored = header >= 3 ? reader.ReadBoolean() : false;
+		ShaderData.RefreshVisibility(this);
 	}
 }

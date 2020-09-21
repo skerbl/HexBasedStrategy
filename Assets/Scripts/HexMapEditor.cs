@@ -10,8 +10,6 @@ public class HexMapEditor : MonoBehaviour
 		Ignore, Yes, No
 	}
 
-	public static int mapFileVersion = 2;
-
 	[SerializeField]
 	HexGrid hexGrid = default;
 

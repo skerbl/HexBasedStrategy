@@ -1,4 +1,4 @@
-﻿Shader "Custom/River"
+﻿Shader "Custom/Feature"
 {
     Properties
     {
@@ -6,22 +6,23 @@
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Specular("Specular", Color) = (0.2, 0.2, 0.2)
+        _BackgroundColor("Background Color", Color) = (0,0,0)
+        [NoScaleOffset] _GridCoordinates("Grid Coordinates", 2D) = "white" {}
     }
     SubShader
     {
-        Tags { "RenderType" = "Transparent" "Queue" = "Transparent+1" }
+        Tags { "RenderType"="Opaque" }
         LOD 200
 
         CGPROGRAM
 
-        #pragma surface surf StandardSpecular alpha vertex:vert
+        #pragma surface surf StandardSpecular fullforwardshadows vertex:vert
         #pragma multi_compile _ HEX_MAP_EDIT_MODE
         #pragma target 3.0
 
-        #include "Water.cginc"
         #include "HexCellData.cginc"
 
-        sampler2D _MainTex;
+        sampler2D _MainTex, _GridCoordinates;
 
         struct Input
         {
@@ -32,36 +33,49 @@
         half _Glossiness;
         fixed3 _Specular;
         fixed4 _Color;
+        half3 _BackgroundColor;
 
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
         // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
         // #pragma instancing_options assumeuniformscaling
         UNITY_INSTANCING_BUFFER_START(Props)
+            // put more per-instance properties here
         UNITY_INSTANCING_BUFFER_END(Props)
 
         void vert(inout appdata_full v, out Input data) 
         {
             UNITY_INITIALIZE_OUTPUT(Input, data);
+            float3 pos = mul(unity_ObjectToWorld, v.vertex);
 
-            float4 cell0 = GetCellData(v, 0);
-            float4 cell1 = GetCellData(v, 1);
+            // First two color channels are used for x and y coords
+            float4 gridUV = float4(pos.xz, 0, 0);
 
-            data.visibility.x = cell0.x * v.color.x + cell1.x * v.color.y;
+            // Stretch so that coord texture matches the grid size and shape
+            gridUV.x *= 1 / (4 * 8.66025404);
+            gridUV.y *= 1 / (2 * 15.0);
+
+            // Flooring gets us the 2x2 cell patch that we're in
+            float2 cellDataCoordinates = floor(gridUV.xy) + tex2Dlod(_GridCoordinates, gridUV).rg;
+
+            // Double that because offsets are halved to make them fit the 0-1 range of UV coords
+            cellDataCoordinates *= 2;
+
+            float4 cellData = GetCellData(cellDataCoordinates);
+            data.visibility.x = cellData.x;
             data.visibility.x = lerp(0.25, 1, data.visibility.x);
-            data.visibility.y = cell0.y * v.color.x + cell1.y * v.color.y;
+            data.visibility.y = cellData.y;
         }
 
         void surf (Input IN, inout SurfaceOutputStandardSpecular o)
         {
-            float river = River(IN.uv_MainTex, _MainTex);
-
+            fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
             float explored = IN.visibility.y;
-            fixed4 c = saturate(_Color + river);
-            o.Albedo = c.rgb * IN.visibility.x;
+            o.Albedo = c.rgb * (IN.visibility.x * explored);
             o.Specular = _Specular * explored;
             o.Smoothness = _Glossiness;
             o.Occlusion = explored;
-            o.Alpha = c.a * explored;
+            o.Emission = _BackgroundColor * (1 - explored);
+            o.Alpha = c.a;
         }
         ENDCG
     }

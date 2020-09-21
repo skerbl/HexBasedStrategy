@@ -5,6 +5,8 @@ using System.IO;
 
 public class SaveLoadMenu : MonoBehaviour
 {
+	const int mapFileVersion = 3;
+
 	[SerializeField]
 	Text menuLabel = default;
 
@@ -121,7 +123,7 @@ public class SaveLoadMenu : MonoBehaviour
 		using (BinaryWriter writer = new BinaryWriter(File.Open(path, FileMode.Create)))
 		{
 			// Placeholder for save file versioning
-			writer.Write(HexMapEditor.mapFileVersion);
+			writer.Write(mapFileVersion);
 			hexGrid.Save(writer);
 		}
 	}
@@ -138,7 +140,7 @@ public class SaveLoadMenu : MonoBehaviour
 			// Read save file version first
 			int header = reader.ReadInt32();
 
-			if (header <= HexMapEditor.mapFileVersion)
+			if (header <= mapFileVersion)
 			{
 				hexGrid.Load(reader, header);
 				HexMapCamera.ValidatePosition();
