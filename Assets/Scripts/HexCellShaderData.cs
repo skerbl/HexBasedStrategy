@@ -1,5 +1,12 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// Stores data that will be passed as a texture to the shader in order to influence graphical representation.
+/// R: Current visibility of the cell.
+/// G: Exploration status of the cell.
+/// B:
+/// A:
+/// </summary>
 public class HexCellShaderData : MonoBehaviour
 {
 	private Texture2D cellTexture;
@@ -44,7 +51,9 @@ public class HexCellShaderData : MonoBehaviour
 
 	public void RefreshVisibility(HexCell cell)
 	{
-		cellTextureData[cell.Index].r = cell.IsVisible ? (byte)255 : (byte)0;
+		int index = cell.Index;
+		cellTextureData[index].r = cell.IsVisible ? (byte)255 : (byte)0;
+		cellTextureData[index].g = cell.IsExplored ? (byte)255 : (byte)0;
 		enabled = true;
 	}
 
