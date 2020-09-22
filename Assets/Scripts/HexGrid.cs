@@ -26,6 +26,9 @@ public class HexGrid : MonoBehaviour
 
 	public int seed;
 
+	[Tooltip("Allows movement into and through unexplored territory. Keep in mind that pathfinding currently knows everything about hidden parts of the grid.")]
+	public bool moveToUnexploredTerritory = false;
+
 	private HexCell[] cells;
 	private HexGridChunk[] chunks;
 	private int chunkCountX;
@@ -253,16 +256,14 @@ public class HexGrid : MonoBehaviour
 	/// <param name="fromCell">The starting cell</param>
 	/// <param name="toCell">The destination cell</param>
 	/// <param name="speed">The unit's movement speed. Since the default movement cost is 5, a number *not* divisible by 5 should be preferred.</param>
-	public void FindPath(HexCell fromCell, HexCell toCell, int speed)
+	public void FindPath(HexCell fromCell, HexCell toCell, HexUnit unit)
 	{
 		ClearPath();
 		currentPathFrom = fromCell;
 		currentPathTo = toCell;
-		currentPathExists = Search(fromCell, toCell, speed);
-		if (currentPathExists)
-		{
-			ShowPath(speed);
-		}
+		currentPathExists = Search(fromCell, toCell, unit);
+		
+		ShowPath(unit.Speed);
 	}
 
 	/// <summary>
@@ -318,8 +319,10 @@ public class HexGrid : MonoBehaviour
 	/// <param name="toCell">The destination cell</param>
 	/// <param name="speed">The unit's movement speed. Since the default movement cost is 5, a number *not* divisible by 5 should be preferred.</param>
 	/// <returns>Success or failure</returns>
-	bool Search(HexCell fromCell, HexCell toCell, int speed)
+	bool Search(HexCell fromCell, HexCell toCell, HexUnit unit)
 	{
+		int speed = unit.Speed;
+
 		// Ensure that new search frontier is always larger than the previous one
 		searchFrontierPhase += 2;
 
@@ -360,33 +363,16 @@ public class HexGrid : MonoBehaviour
 				{
 					continue;
 				}
-				if (neighbor.IsUnderwater || neighbor.Unit)		// Units of the same faction might be allowed to move past each other
-				{
-					continue;
-				}
-				HexEdgeType edgeType = current.GetEdgeType(neighbor);
-				if (edgeType == HexEdgeType.Cliff)
+
+				if (!unit.IsValidDestination(neighbor))
 				{
 					continue;
 				}
 
-				// TODO: Find a clean way to implement different movement rules (e.g. flying, aquatic, amphibious, etc.)
-
-				int moveCost;
-				if (current.HasRoadThroughEdge(d))
-				{
-					moveCost = 1;
-				}
-				else if (current.Walled != neighbor.Walled)
+				int moveCost = unit.GetMoveCost(current, neighbor, d);
+				if (moveCost < 0)
 				{
 					continue;
-				}
-				else
-				{
-					moveCost = edgeType == HexEdgeType.Flat ? 5 : 10;
-
-					// Features without roads slow down movement.
-					moveCost += neighbor.UrbanLevel + neighbor.FarmLevel + neighbor.PlantLevel;
 				}
 
 				// This will discard leftover movement points and add them to the total distance.
