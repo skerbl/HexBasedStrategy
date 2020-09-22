@@ -105,7 +105,7 @@ public class HexGameUI : MonoBehaviour
 		{
 			if (currentCell && selectedUnit.IsValidDestination(currentCell))
 			{
-				grid.FindPath(selectedUnit.Location, currentCell, selectedUnit.MovementPoints);
+				grid.FindPath(selectedUnit.Location, currentCell, selectedUnit);
 			}
 			else
 			{

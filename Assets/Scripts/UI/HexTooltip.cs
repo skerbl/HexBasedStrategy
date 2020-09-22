@@ -38,7 +38,7 @@ public class HexTooltip : MonoBehaviour
 
 		unitName.text = unit.Name;
 		unitHitpoints.text = "10";
-		unitMovement.text = unit.MovementPoints.ToString();
+		unitMovement.text = unit.Speed.ToString();
 		unitAttack.text = "10";
 		unitRange.text = "1";
 

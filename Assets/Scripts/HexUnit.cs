@@ -46,8 +46,18 @@ public class HexUnit : MonoBehaviour
 		}
 	}
 
+	/// <summary>
+	/// The movement speed of the unit. For now, this is fixed to 24.
+	/// </summary>
+	public int Speed
+	{
+		get
+		{
+			return 24;
+		}
+	}
+
 	public string Name { get; } = "Dummy Unit";
-	public int MovementPoints { get; } = 24;
 	public HexGrid Grid { get; set; }
 
 	private float orientation;
@@ -84,7 +94,52 @@ public class HexUnit : MonoBehaviour
 	/// <returns>Validity</returns>
 	public bool IsValidDestination(HexCell cell)
 	{
-		return !cell.IsUnderwater && !cell.Unit;
+		// TODO: Units of the same faction might be allowed to move past each other
+		// TODO: Find a good way to allow "non-clairvoyant" pathfinding into unexplored territory
+		if (Grid.moveToUnexploredTerritory)
+		{
+			return !cell.IsUnderwater && !cell.Unit;
+		}
+		else
+		{
+			return cell.IsExplored && !cell.IsUnderwater && !cell.Unit;
+		}
+	}
+
+	/// <summary>
+	/// Determines the movement cost for this unit to move from one cell to another.
+	/// </summary>
+	/// <param name="fromCell">The cell the unit is coming from</param>
+	/// <param name="toCell">The cell the unit is moving to</param>
+	/// <param name="direction">The direction of the movement</param>
+	/// <returns>The movement cost, or -1 if movement is impossible.</returns>
+	public int GetMoveCost(HexCell fromCell, HexCell toCell, HexDirection direction)
+	{
+		// TODO: Find a clean way to implement different movement rules (e.g. flying, aquatic, amphibious, etc.)
+		HexEdgeType edgeType = fromCell.GetEdgeType(toCell);
+		if (edgeType == HexEdgeType.Cliff)
+		{
+			return -1;
+		}
+
+		int moveCost;
+		if (fromCell.HasRoadThroughEdge(direction))
+		{
+			moveCost = 1;
+		}
+		else if (fromCell.Walled != toCell.Walled)
+		{
+			return -1;
+		}
+		else
+		{
+			moveCost = edgeType == HexEdgeType.Flat ? 5 : 10;
+
+			// Features without roads slow down movement.
+			moveCost += toCell.UrbanLevel + toCell.FarmLevel + toCell.PlantLevel;
+		}
+
+		return moveCost;
 	}
 
 	/// <summary>
