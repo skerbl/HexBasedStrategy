@@ -60,6 +60,7 @@ public class HexGrid : MonoBehaviour
 		HexUnit.unitPrefab = unitPrefab;
 
 		cellShaderData = gameObject.AddComponent<HexCellShaderData>();
+		cellShaderData.Grid = this;
 
 		CreateMap(cellCountX, cellCountZ);
 	}
@@ -71,6 +72,8 @@ public class HexGrid : MonoBehaviour
 			HexMetrics.noiseSource = noiseSource;
 			HexMetrics.InitializeHashGrid(seed);
 			HexUnit.unitPrefab = unitPrefab;
+
+			ResetVisibility();
 		}
 	}
 
@@ -474,6 +477,25 @@ public class HexGrid : MonoBehaviour
 		}
 
 		return visibleCells;
+	}
+
+	/// <summary>
+	/// Resets the visibility of all cells, recalculating the vision radii of all units.
+	/// This will get called whenever a cell's elevation or waterlevel changes, which requires 
+	/// a recalculation of visibility.
+	/// </summary>
+	public void ResetVisibility()
+	{
+		for (int i = 0; i < cells.Length; i++)
+		{
+			cells[i].ResetVisibility();
+		}
+
+		for (int i = 0; i < units.Count; i++)
+		{
+			HexUnit unit = units[i];
+			IncreaseVisibility(unit.Location, unit.VisionRange);
+		}
 	}
 
 	/// <summary>

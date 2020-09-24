@@ -15,12 +15,14 @@ public class HexCellShaderData : MonoBehaviour
 	private Texture2D cellTexture;
 	private Color32[] cellTextureData;
 	private List<HexCell> transitioningCells = new List<HexCell>();
-
+	private bool needsVisibilityReset;
 
 	/// <summary>
 	/// Toggles between immediate visibility changes and smooth transitions.
 	/// </summary>
 	public bool ImmediateMode { get; set; }
+
+	public HexGrid Grid { get; set; }
 
 	public void Initialize(int x, int z)
 	{
@@ -76,6 +78,12 @@ public class HexCellShaderData : MonoBehaviour
 		enabled = true;
 	}
 
+	public void ViewElevationChanged()
+	{
+		needsVisibilityReset = true;
+		enabled = true;
+	}
+
 	/// <summary>
 	/// Updates the cell data to allow smooth visibility transitions.
 	/// Uses the values of the R and G channels to transition between 0 and 255.
@@ -123,6 +131,12 @@ public class HexCellShaderData : MonoBehaviour
 
 	void LateUpdate()
 	{
+		if (needsVisibilityReset)
+		{
+			needsVisibilityReset = false;
+			Grid.ResetVisibility();
+		}
+
 		int delta = (int)(Time.deltaTime * transitionSpeed);
 
 		// Very high frame rates combined with very low transition speed might make delta zero.
