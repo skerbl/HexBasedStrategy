@@ -12057,6 +12057,7 @@ MonoBehaviour:
   unitPrefab: {fileID: 2992501328047462655, guid: 04226d275e5cdaf45a23488b100751c3, type: 3}
   noiseSource: {fileID: 2800000, guid: fe5af6a815d34b54d808455fcc9371ba, type: 3}
   seed: 0
+  moveToUnexploredTerritory: 0
 --- !u!4 &1477363577
 Transform:
   m_ObjectHideFlags: 0
@@ -13568,7 +13569,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1674174184}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 877647285}
+        m_TargetAssemblyTypeName: SaveLoadMenu, Assembly-CSharp
+        m_MethodName: Delete
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1674174184
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -147,6 +147,7 @@ public class HexGrid : MonoBehaviour
 		cell.coordinates = HexCoordinates.FromOffsetCoordinates(x, z);
 		cell.Index = i;
 		cell.ShaderData = cellShaderData;
+		cell.Explorable = x > 0 && z > 0 && x < cellCountX - 1 && z < cellCountZ - 1;
 
 		if (x > 0)
 		{
@@ -431,10 +432,12 @@ public class HexGrid : MonoBehaviour
 			searchFrontier.Clear();
 		}
 
+		range += fromCell.ViewElevation;
 		fromCell.SearchPhase = searchFrontierPhase;
 		fromCell.Distance = 0;
 		searchFrontier.Enqueue(fromCell);
 
+		HexCoordinates fromCoordinates = fromCell.coordinates;
 		while (searchFrontier.Count > 0)
 		{
 			// Cells taken out of the frontier will have a larger phase than the existing 
@@ -448,15 +451,17 @@ public class HexGrid : MonoBehaviour
 				HexCell neighbor = current.GetNeighbor(d);
 
 				// Cells that were already taken out of the frontier will be skipped
-				if (neighbor == null || neighbor.SearchPhase > searchFrontierPhase)
+				if (neighbor == null || neighbor.SearchPhase > searchFrontierPhase || !neighbor.Explorable)
 				{
 					continue;
 				}
 
 				int distance = current.Distance + 1;
-				if (distance > range)
+				if (distance + neighbor.ViewElevation > range ||
+					distance > fromCoordinates.DistanceTo(neighbor.coordinates))
 				{
-					// Skip all cells that exceed the vision range
+					// Skip all cells that exceed the vision range 
+					// Only consider the shortest path to prevent looking "around corners"
 					continue;
 				}
 
