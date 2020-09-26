@@ -109,7 +109,7 @@ public class HexGrid : MonoBehaviour
 		return true;
 	}
 
-		void CreateChunks()
+	void CreateChunks()
 	{
 		chunks = new HexGridChunk[chunkCountX * chunkCountZ];
 

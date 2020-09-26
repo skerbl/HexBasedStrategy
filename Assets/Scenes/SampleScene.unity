@@ -1388,10 +1388,10 @@ MonoBehaviour:
   m_FillRect: {fileID: 1948200432}
   m_HandleRect: {fileID: 1857219290}
   m_Direction: 0
-  m_MinValue: 0
-  m_MaxValue: 10
+  m_MinValue: -2
+  m_MaxValue: 8
   m_WholeNumbers: 1
-  m_Value: 0
+  m_Value: -0
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
@@ -3115,8 +3115,12 @@ MonoBehaviour:
   jitterProbability: 0.25
   chunkSizeMin: 30
   chunkSizeMax: 100
+  elevationMinimum: -2
+  elevationMaximum: 8
   waterLevel: 3
   landPercentage: 50
+  highRiseProbability: 0.25
+  sinkProbability: 0.2
 --- !u!4 &332663528
 Transform:
   m_ObjectHideFlags: 0
@@ -14910,8 +14914,8 @@ MonoBehaviour:
   m_FillRect: {fileID: 1311645577}
   m_HandleRect: {fileID: 462152025}
   m_Direction: 0
-  m_MinValue: 0
-  m_MaxValue: 6
+  m_MinValue: -2
+  m_MaxValue: 8
   m_WholeNumbers: 1
   m_Value: 0
   m_OnValueChanged:
