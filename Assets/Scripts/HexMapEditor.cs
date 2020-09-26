@@ -46,7 +46,8 @@ public class HexMapEditor : MonoBehaviour
 		SetWalledMode((int)OptionalToggle.Ignore);
 		SetTerrainTypeIndex(0);
 
-		SetEditMode(false);
+		Shader.EnableKeyword("HEX_MAP_EDIT_MODE");
+		SetEditMode(true);
 	}
 
 	private void OnEnable()

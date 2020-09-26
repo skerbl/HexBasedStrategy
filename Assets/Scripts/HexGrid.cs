@@ -219,6 +219,16 @@ public class HexGrid : MonoBehaviour
 		return cells[index];
 	}
 
+	public HexCell GetCell(int xOffset, int zOffset)
+	{
+		return cells[xOffset + zOffset * cellCountX];
+	}
+
+	public HexCell GetCell(int cellIndex)
+	{
+		return cells[cellIndex];
+	}
+
 	public HexCell GetCell(HexCoordinates coordinates)
 	{
 		int z = coordinates.Z;
