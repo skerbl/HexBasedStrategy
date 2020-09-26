@@ -2,7 +2,13 @@
 
 public class NewMapMenu : MonoBehaviour
 {
-	public HexGrid hexGrid;
+	[SerializeField]
+	HexGrid hexGrid = default;
+
+	[SerializeField]
+	HexMapGenerator mapGenerator = default;
+
+	private bool generateMaps = true;
 
 	public void Open()
 	{
@@ -16,9 +22,22 @@ public class NewMapMenu : MonoBehaviour
 		HexMapCamera.Locked = false;
 	}
 
+	public void ToggleMapGeneration(bool toggle)
+	{
+		generateMaps = toggle;
+	}
+
 	void CreateMap(int x, int z)
 	{
-		hexGrid.CreateMap(x, z);
+		if (generateMaps)
+		{
+			mapGenerator.GenerateMap(x, z);
+		}
+		else
+		{
+			hexGrid.CreateMap(x, z);
+		}
+
 		HexMapCamera.ValidatePosition();
 		Close();
 	}

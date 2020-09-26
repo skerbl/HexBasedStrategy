@@ -60,6 +60,7 @@ public class HexGrid : MonoBehaviour
 		HexUnit.unitPrefab = unitPrefab;
 
 		cellShaderData = gameObject.AddComponent<HexCellShaderData>();
+		cellShaderData.Grid = this;
 
 		CreateMap(cellCountX, cellCountZ);
 	}
@@ -71,6 +72,8 @@ public class HexGrid : MonoBehaviour
 			HexMetrics.noiseSource = noiseSource;
 			HexMetrics.InitializeHashGrid(seed);
 			HexUnit.unitPrefab = unitPrefab;
+
+			ResetVisibility();
 		}
 	}
 
@@ -144,6 +147,7 @@ public class HexGrid : MonoBehaviour
 		cell.coordinates = HexCoordinates.FromOffsetCoordinates(x, z);
 		cell.Index = i;
 		cell.ShaderData = cellShaderData;
+		cell.Explorable = x > 0 && z > 0 && x < cellCountX - 1 && z < cellCountZ - 1;
 
 		if (x > 0)
 		{
@@ -213,6 +217,16 @@ public class HexGrid : MonoBehaviour
 		HexCoordinates coordinates = HexCoordinates.FromPosition(position);
 		int index = coordinates.X + coordinates.Z * cellCountX + coordinates.Z / 2;
 		return cells[index];
+	}
+
+	public HexCell GetCell(int xOffset, int zOffset)
+	{
+		return cells[xOffset + zOffset * cellCountX];
+	}
+
+	public HexCell GetCell(int cellIndex)
+	{
+		return cells[cellIndex];
 	}
 
 	public HexCell GetCell(HexCoordinates coordinates)
@@ -428,10 +442,12 @@ public class HexGrid : MonoBehaviour
 			searchFrontier.Clear();
 		}
 
+		range += fromCell.ViewElevation;
 		fromCell.SearchPhase = searchFrontierPhase;
 		fromCell.Distance = 0;
 		searchFrontier.Enqueue(fromCell);
 
+		HexCoordinates fromCoordinates = fromCell.coordinates;
 		while (searchFrontier.Count > 0)
 		{
 			// Cells taken out of the frontier will have a larger phase than the existing 
@@ -445,15 +461,17 @@ public class HexGrid : MonoBehaviour
 				HexCell neighbor = current.GetNeighbor(d);
 
 				// Cells that were already taken out of the frontier will be skipped
-				if (neighbor == null || neighbor.SearchPhase > searchFrontierPhase)
+				if (neighbor == null || neighbor.SearchPhase > searchFrontierPhase || !neighbor.Explorable)
 				{
 					continue;
 				}
 
 				int distance = current.Distance + 1;
-				if (distance > range)
+				if (distance + neighbor.ViewElevation > range ||
+					distance > fromCoordinates.DistanceTo(neighbor.coordinates))
 				{
-					// Skip all cells that exceed the vision range
+					// Skip all cells that exceed the vision range 
+					// Only consider the shortest path to prevent looking "around corners"
 					continue;
 				}
 
@@ -474,6 +492,25 @@ public class HexGrid : MonoBehaviour
 		}
 
 		return visibleCells;
+	}
+
+	/// <summary>
+	/// Resets the visibility of all cells, recalculating the vision radii of all units.
+	/// This will get called whenever a cell's elevation or waterlevel changes, which requires 
+	/// a recalculation of visibility.
+	/// </summary>
+	public void ResetVisibility()
+	{
+		for (int i = 0; i < cells.Length; i++)
+		{
+			cells[i].ResetVisibility();
+		}
+
+		for (int i = 0; i < units.Count; i++)
+		{
+			HexUnit unit = units[i];
+			IncreaseVisibility(unit.Location, unit.VisionRange);
+		}
 	}
 
 	/// <summary>
@@ -567,6 +604,9 @@ public class HexGrid : MonoBehaviour
 			}
 		}
 
+		bool originalImmediateMode = cellShaderData.ImmediateMode;
+		cellShaderData.ImmediateMode = true;
+
 		for (int i = 0; i < cells.Length; i++)
 		{
 			cells[i].Load(reader, header);
@@ -585,6 +625,8 @@ public class HexGrid : MonoBehaviour
 				HexUnit.Load(reader, this);
 			}
 		}
+
+		cellShaderData.ImmediateMode = originalImmediateMode;
 	}
 
 	

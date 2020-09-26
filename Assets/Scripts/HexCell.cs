@@ -28,6 +28,7 @@ public class HexCell : MonoBehaviour
 	private int specialIndex;
 	private int distance;
 	private int visibility = 0;
+	private bool explored;
 
 	/// <summary>
 	/// The index of this cell in the map's cell list and in the cell shader data.
@@ -64,15 +65,33 @@ public class HexCell : MonoBehaviour
 	public HexCellShaderData ShaderData { get; set; }
 
 	/// <summary>
+	/// Cells marked as not explorable will never be uncovered by a unit's vision.
+	/// This is useful to hide the edges of the map from the player, where the mesh looks
+	/// ugly because of missing neighbor cells.
+	/// TODO: Explorable state could easily be made editable in Edit Mode. Also include it in save data in this case.
+	/// </summary>
+	public bool Explorable { get; set; }
+
+	/// <summary>
 	/// Keeps track of whether this cell has been explored at some point.
 	/// </summary>
-	public bool IsExplored { get; set; }
+	public bool IsExplored
+	{
+		get
+		{
+			return explored && Explorable;
+		}
+		private set
+		{
+			explored = value;
+		}
+	}
 
 	public bool IsVisible
 	{
 		get
 		{
-			return visibility > 0;
+			return visibility > 0 && Explorable;
 		}
 	}
 
@@ -81,6 +100,14 @@ public class HexCell : MonoBehaviour
 		get
 		{
 			return distance + SearchHeuristic;
+		}
+	}
+
+	public int ViewElevation
+	{
+		get
+		{
+			return elevation >= waterLevel ? elevation : waterLevel;
 		}
 	}
 
@@ -96,7 +123,15 @@ public class HexCell : MonoBehaviour
 			{
 				return;
 			}
+
+			int originalViewElevation = ViewElevation;
 			elevation = value;
+
+			if (ViewElevation != originalViewElevation)
+			{
+				ShaderData.ViewElevationChanged();
+			}
+
 			RefreshPosition();
 			ValidateRivers();
 
@@ -125,7 +160,15 @@ public class HexCell : MonoBehaviour
 			{
 				return;
 			}
+
+			int originalViewElevation = ViewElevation;
 			waterLevel = value;
+
+			if (ViewElevation != originalViewElevation)
+			{
+				ShaderData.ViewElevationChanged();
+			}
+
 			ValidateRivers();
 			Refresh();
 		}
@@ -616,6 +659,15 @@ public class HexCell : MonoBehaviour
 		}
 	}
 
+	public void ResetVisibility()
+	{
+		if (visibility > 0)
+		{
+			visibility = 0;
+			ShaderData.RefreshVisibility(this);
+		}
+	}
+
 	public void Save(BinaryWriter writer)
 	{
 		writer.Write((byte)terrainTypeIndex);
@@ -662,7 +714,7 @@ public class HexCell : MonoBehaviour
 
 	public void Load(BinaryReader reader, int header)
 	{
-		terrainTypeIndex = reader.ReadByte();
+		TerrainTypeIndex = reader.ReadByte();
 		elevation = reader.ReadByte();
 		RefreshPosition();
 		waterLevel = reader.ReadByte();
