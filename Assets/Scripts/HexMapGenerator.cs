@@ -57,6 +57,9 @@ public class HexMapGenerator : MonoBehaviour
     [SerializeField, Range(0f, 0.4f), Tooltip("Probability of cells being lowered instead of raised, creating more variations in terrain.")]
     float sinkProbability = 0.2f;
 
+    [SerializeField, Range(0, 100), Tooltip("Smoothens the terrain after creating landmasses. A value of 100 will remove any cliffs from the map, leaving only smooth, sloped terrain.")]
+    int erosionPercentage = 50;
+
     private int cellCount;
     private int searchFrontierPhase;
     private List<MapRegion> regions;
@@ -90,6 +93,7 @@ public class HexMapGenerator : MonoBehaviour
 
         CreateRegions();
         CreateLand();
+        ErodeLand();
         SetTerrainType();
 
         for (int i = 0; i < cellCount; i++)
@@ -211,7 +215,7 @@ public class HexMapGenerator : MonoBehaviour
     /// <param name="chunkSize">The size of the chunk of land to be raised</param>
     /// <param name="budget">The total number of cells that should be raised above the water level</param>
     /// <returns>The remaining amount of land that wasn't raised above the water level</returns>
-    int RaiseTerrain(int chunkSize, int budget, MapRegion region)
+    private int RaiseTerrain(int chunkSize, int budget, MapRegion region)
     {
         searchFrontierPhase += 1;
         HexCell firstCell = GetRandomCell(region);
@@ -268,7 +272,7 @@ public class HexMapGenerator : MonoBehaviour
     /// <param name="chunkSize">The size of the chunk of land to be lowered</param>
     /// <param name="budget">The total number of cells that should be lowered</param>
     /// <returns>The new amount of land that wasn't raised above the water level</returns>
-    int SinkTerrain(int chunkSize, int budget, MapRegion region)
+    private int SinkTerrain(int chunkSize, int budget, MapRegion region)
     {
         searchFrontierPhase += 1;
         HexCell firstCell = GetRandomCell(region);
@@ -318,7 +322,7 @@ public class HexMapGenerator : MonoBehaviour
         return budget;
     }
 
-    void CreateLand()
+    private void CreateLand()
     {
         int landBudget = Mathf.RoundToInt(cellCount * landPercentage * 0.01f);
         for (int failsafe = 0; failsafe < 10000; failsafe++)
@@ -349,7 +353,103 @@ public class HexMapGenerator : MonoBehaviour
         }
     }
 
-    void SetTerrainType()
+    /// <summary>
+    /// Erodes the terrain by removing steep elevation differences. Preserves total
+    /// landmass by shifting any lowered terrain to another location.
+    /// </summary>
+    private void ErodeLand()
+    {
+        List<HexCell> erodibleCells = ListPool<HexCell>.Get();
+        for (int i = 0; i < cellCount; i++)
+        {
+            HexCell cell = grid.GetCell(i);
+            if (IsErodible(cell))
+            {
+                erodibleCells.Add(cell);
+            }
+        }
+
+        int targetErodibleCount = (int)(erodibleCells.Count * (100 - erosionPercentage) * 0.01f);
+
+        while (erodibleCells.Count > targetErodibleCount)
+        {
+            int index = Random.Range(0, erodibleCells.Count);
+            HexCell cell = erodibleCells[index];
+            HexCell targetCell = GetErosionTarget(cell);
+
+            cell.Elevation -= 1;
+            targetCell.Elevation += 1;
+
+            // Only remove the cell from the list if it's been lowered far enough
+            if (!IsErodible(cell))
+            {
+                erodibleCells[index] = erodibleCells[erodibleCells.Count - 1];
+                erodibleCells.RemoveAt(erodibleCells.Count - 1);
+            }
+
+            // Check if any additional surrounding cells have now become erodible
+            for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+            {
+                HexCell neighbor = cell.GetNeighbor(d);
+                if (neighbor && neighbor.Elevation == cell.Elevation + 2 && !erodibleCells.Contains(neighbor))
+                {
+                    erodibleCells.Add(neighbor);
+                }
+            }
+
+            if (IsErodible(targetCell) && !erodibleCells.Contains(targetCell))
+            {
+                erodibleCells.Add(targetCell);
+            }
+
+            // Check if any neighbors of the target cell have now become no longer erodible
+            for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+            {
+                HexCell neighbor = targetCell.GetNeighbor(d);
+                if (neighbor && neighbor != cell && neighbor.Elevation == targetCell.Elevation + 1 && !IsErodible(neighbor))
+                {
+                    erodibleCells.Remove(neighbor);
+                }
+            }
+        }
+
+        ListPool<HexCell>.Add(erodibleCells);
+    }
+
+    private bool IsErodible(HexCell cell)
+    {
+        int erodibleElevation = cell.Elevation - 2;
+        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+        {
+            HexCell neighbor = cell.GetNeighbor(d);
+            if (neighbor && neighbor.Elevation <= erodibleElevation)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private HexCell GetErosionTarget(HexCell cell)
+    {
+        List<HexCell> candidates = ListPool<HexCell>.Get();
+        int erodibleElevation = cell.Elevation - 2;
+
+        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+        {
+            HexCell neighbor = cell.GetNeighbor(d);
+            if (neighbor && neighbor.Elevation <= erodibleElevation)
+            {
+                candidates.Add(neighbor);
+            }
+        }
+
+        HexCell target = candidates[Random.Range(0, candidates.Count)];
+        ListPool<HexCell>.Add(candidates);
+        return target;
+    }
+
+    private void SetTerrainType()
     {
         for (int i = 0; i < cellCount; i++)
         {
@@ -361,7 +461,7 @@ public class HexMapGenerator : MonoBehaviour
         }
     }
 
-    HexCell GetRandomCell(MapRegion region)
+    private HexCell GetRandomCell(MapRegion region)
     {
         return grid.GetCell(Random.Range(region.xMin, region.xMax), Random.Range(region.zMin, region.zMax));
     }
