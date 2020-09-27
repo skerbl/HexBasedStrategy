@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class HexMapGenerator : MonoBehaviour
 {
+    struct MapRegion
+    {
+        public int xMin, xMax, zMin, zMax;
+    }
+
     [SerializeField]
     HexGrid grid = default;
 
@@ -21,6 +26,18 @@ public class HexMapGenerator : MonoBehaviour
 
     [SerializeField, Range(20, 200)]
     int chunkSizeMax = 100;
+
+    [SerializeField, Range(0, 10), Tooltip("Creates a border of water along the horizontal edges of the map.")]
+    int mapBorderX = 5;
+
+    [SerializeField, Range(0, 10), Tooltip("Creates a border of water along the horizontal edges of the map.")]
+    int mapBorderZ = 5;
+
+    [SerializeField, Range(1, 4), Tooltip("Breaks the map up into continents.")]
+    int regionCount = 1;
+
+    [SerializeField, Range(0, 10), Tooltip("Separates the continents with water.")]
+    int regionBorder = 5;
 
     [SerializeField, Range(-4, 0)]
     int elevationMinimum = -2;
@@ -40,8 +57,12 @@ public class HexMapGenerator : MonoBehaviour
     [SerializeField, Range(0f, 0.4f), Tooltip("Probability of cells being lowered instead of raised, creating more variations in terrain.")]
     float sinkProbability = 0.2f;
 
+    [SerializeField, Range(0, 100), Tooltip("Smoothens the terrain after creating landmasses. A value of 100 will remove any cliffs from the map, leaving only smooth, sloped terrain.")]
+    int erosionPercentage = 50;
+
     private int cellCount;
     private int searchFrontierPhase;
+    private List<MapRegion> regions;
     private HexCellPriorityQueue searchFrontier;
 
     public void GenerateMap(int x, int z)
@@ -70,7 +91,9 @@ public class HexMapGenerator : MonoBehaviour
             grid.GetCell(i).WaterLevel = waterLevel;
         }
 
+        CreateRegions();
         CreateLand();
+        ErodeLand();
         SetTerrainType();
 
         for (int i = 0; i < cellCount; i++)
@@ -82,15 +105,120 @@ public class HexMapGenerator : MonoBehaviour
     }
 
     /// <summary>
+    /// Breaks the map up into 1-4 separate regions. Currently, they are
+    /// split along straight lines, equal in size, and equal in landmass.
+    /// Maybe add some more advance splitting methods that produce more organic results?
+    /// </summary>
+    void CreateRegions()
+    {
+        if (regions == null)
+        {
+            regions = new List<MapRegion>();
+        }
+        else
+        {
+            regions.Clear();
+        }
+
+        switch (regionCount)
+        {
+            default:
+                CreateOneRegion();
+                break;
+            case 2:
+                CreateTwoRegions();
+                break;
+            case 3:
+                CreateThreeRegions();
+                break;
+            case 4:
+                CreateFourRegions();
+                break;
+        }
+    }
+
+    private void CreateOneRegion()
+	{
+        MapRegion region;
+        region.xMin = mapBorderX;
+        region.xMax = grid.cellCountX - mapBorderX;
+        region.zMin = mapBorderZ;
+        region.zMax = grid.cellCountZ - mapBorderZ;
+        regions.Add(region);
+    }
+
+    private void CreateTwoRegions()
+	{
+        MapRegion region;
+        if (Random.value < 0.5f)
+        {
+            region.xMin = mapBorderX;
+            region.xMax = grid.cellCountX / 2 - regionBorder;
+            region.zMin = mapBorderZ;
+            region.zMax = grid.cellCountZ - mapBorderZ;
+            regions.Add(region);
+            region.xMin = grid.cellCountX / 2 + regionBorder;
+            region.xMax = grid.cellCountX - mapBorderX;
+            regions.Add(region);
+        }
+        else
+        {
+            region.xMin = mapBorderX;
+            region.xMax = grid.cellCountX - mapBorderX;
+            region.zMin = mapBorderZ;
+            region.zMax = grid.cellCountZ / 2 - regionBorder;
+            regions.Add(region);
+            region.zMin = grid.cellCountZ / 2 + regionBorder;
+            region.zMax = grid.cellCountZ - mapBorderZ;
+            regions.Add(region);
+        }
+    }
+
+    private void CreateThreeRegions()
+	{
+        MapRegion region;
+        region.xMin = mapBorderX;
+        region.xMax = grid.cellCountX / 3 - regionBorder;
+        region.zMin = mapBorderZ;
+        region.zMax = grid.cellCountZ - mapBorderZ;
+        regions.Add(region);
+        region.xMin = grid.cellCountX / 3 + regionBorder;
+        region.xMax = grid.cellCountX * 2 / 3 - regionBorder;
+        regions.Add(region);
+        region.xMin = grid.cellCountX * 2 / 3 + regionBorder;
+        region.xMax = grid.cellCountX - mapBorderX;
+        regions.Add(region);
+    }
+
+    private void CreateFourRegions()
+	{
+        MapRegion region;
+        region.xMin = mapBorderX;
+        region.xMax = grid.cellCountX / 2 - regionBorder;
+        region.zMin = mapBorderZ;
+        region.zMax = grid.cellCountZ / 2 - regionBorder;
+        regions.Add(region);
+        region.xMin = grid.cellCountX / 2 + regionBorder;
+        region.xMax = grid.cellCountX - mapBorderX;
+        regions.Add(region);
+        region.zMin = grid.cellCountZ / 2 + regionBorder;
+        region.zMax = grid.cellCountZ - mapBorderZ;
+        regions.Add(region);
+        region.xMin = mapBorderX;
+        region.xMax = grid.cellCountX / 2 - regionBorder;
+        regions.Add(region);
+    }
+
+    /// <summary>
     /// Raises a random chunk of land by one elevation step (with a chance of raising by 2).
     /// </summary>
     /// <param name="chunkSize">The size of the chunk of land to be raised</param>
     /// <param name="budget">The total number of cells that should be raised above the water level</param>
     /// <returns>The remaining amount of land that wasn't raised above the water level</returns>
-    int RaiseTerrain(int chunkSize, int budget)
+    private int RaiseTerrain(int chunkSize, int budget, MapRegion region)
     {
         searchFrontierPhase += 1;
-        HexCell firstCell = GetRandomCell();
+        HexCell firstCell = GetRandomCell(region);
         firstCell.SearchPhase = searchFrontierPhase;
         firstCell.Distance = 0;
         firstCell.SearchHeuristic = 0;
@@ -144,10 +272,10 @@ public class HexMapGenerator : MonoBehaviour
     /// <param name="chunkSize">The size of the chunk of land to be lowered</param>
     /// <param name="budget">The total number of cells that should be lowered</param>
     /// <returns>The new amount of land that wasn't raised above the water level</returns>
-    int SinkTerrain(int chunkSize, int budget)
+    private int SinkTerrain(int chunkSize, int budget, MapRegion region)
     {
         searchFrontierPhase += 1;
-        HexCell firstCell = GetRandomCell();
+        HexCell firstCell = GetRandomCell(region);
         firstCell.SearchPhase = searchFrontierPhase;
         firstCell.Distance = 0;
         firstCell.SearchHeuristic = 0;
@@ -194,24 +322,134 @@ public class HexMapGenerator : MonoBehaviour
         return budget;
     }
 
-    void CreateLand()
+    private void CreateLand()
     {
         int landBudget = Mathf.RoundToInt(cellCount * landPercentage * 0.01f);
-        while (landBudget > 0)
+        for (int failsafe = 0; failsafe < 10000; failsafe++)
         {
-            int chunkSize = Random.Range(chunkSizeMin, chunkSizeMax + 1);
-            if (Random.value < sinkProbability)
+            bool sink = Random.value < sinkProbability;
+            for (int i = 0; i < regions.Count; i++)
             {
-                landBudget = SinkTerrain(chunkSize, landBudget);
+                MapRegion region = regions[i];
+                int chunkSize = Random.Range(chunkSizeMin, chunkSizeMax - 1);
+                if (sink)
+                {
+                    landBudget = SinkTerrain(chunkSize, landBudget, region);
+                }
+                else
+                {
+                    landBudget = RaiseTerrain(chunkSize, landBudget, region);
+                    if (landBudget == 0)
+                    {
+                        return;
+                    }
+                }
             }
-            else
-            {
-                landBudget = RaiseTerrain(chunkSize, landBudget);
-            }
+        }
+
+        if (landBudget > 0)
+        {
+            Debug.LogWarning("Failed to use up " + landBudget + " land budget.");
         }
     }
 
-    void SetTerrainType()
+    /// <summary>
+    /// Erodes the terrain by removing steep elevation differences. Preserves total
+    /// landmass by shifting any lowered terrain to another location.
+    /// </summary>
+    private void ErodeLand()
+    {
+        List<HexCell> erodibleCells = ListPool<HexCell>.Get();
+        for (int i = 0; i < cellCount; i++)
+        {
+            HexCell cell = grid.GetCell(i);
+            if (IsErodible(cell))
+            {
+                erodibleCells.Add(cell);
+            }
+        }
+
+        int targetErodibleCount = (int)(erodibleCells.Count * (100 - erosionPercentage) * 0.01f);
+
+        while (erodibleCells.Count > targetErodibleCount)
+        {
+            int index = Random.Range(0, erodibleCells.Count);
+            HexCell cell = erodibleCells[index];
+            HexCell targetCell = GetErosionTarget(cell);
+
+            cell.Elevation -= 1;
+            targetCell.Elevation += 1;
+
+            // Only remove the cell from the list if it's been lowered far enough
+            if (!IsErodible(cell))
+            {
+                erodibleCells[index] = erodibleCells[erodibleCells.Count - 1];
+                erodibleCells.RemoveAt(erodibleCells.Count - 1);
+            }
+
+            // Check if any additional surrounding cells have now become erodible
+            for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+            {
+                HexCell neighbor = cell.GetNeighbor(d);
+                if (neighbor && neighbor.Elevation == cell.Elevation + 2 && !erodibleCells.Contains(neighbor))
+                {
+                    erodibleCells.Add(neighbor);
+                }
+            }
+
+            if (IsErodible(targetCell) && !erodibleCells.Contains(targetCell))
+            {
+                erodibleCells.Add(targetCell);
+            }
+
+            // Check if any neighbors of the target cell have now become no longer erodible
+            for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+            {
+                HexCell neighbor = targetCell.GetNeighbor(d);
+                if (neighbor && neighbor != cell && neighbor.Elevation == targetCell.Elevation + 1 && !IsErodible(neighbor))
+                {
+                    erodibleCells.Remove(neighbor);
+                }
+            }
+        }
+
+        ListPool<HexCell>.Add(erodibleCells);
+    }
+
+    private bool IsErodible(HexCell cell)
+    {
+        int erodibleElevation = cell.Elevation - 2;
+        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+        {
+            HexCell neighbor = cell.GetNeighbor(d);
+            if (neighbor && neighbor.Elevation <= erodibleElevation)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private HexCell GetErosionTarget(HexCell cell)
+    {
+        List<HexCell> candidates = ListPool<HexCell>.Get();
+        int erodibleElevation = cell.Elevation - 2;
+
+        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+        {
+            HexCell neighbor = cell.GetNeighbor(d);
+            if (neighbor && neighbor.Elevation <= erodibleElevation)
+            {
+                candidates.Add(neighbor);
+            }
+        }
+
+        HexCell target = candidates[Random.Range(0, candidates.Count)];
+        ListPool<HexCell>.Add(candidates);
+        return target;
+    }
+
+    private void SetTerrainType()
     {
         for (int i = 0; i < cellCount; i++)
         {
@@ -223,8 +461,8 @@ public class HexMapGenerator : MonoBehaviour
         }
     }
 
-    HexCell GetRandomCell()
+    private HexCell GetRandomCell(MapRegion region)
     {
-        return grid.GetCell(Random.Range(0, cellCount));
+        return grid.GetCell(Random.Range(region.xMin, region.xMax), Random.Range(region.zMin, region.zMax));
     }
 }
