@@ -5,7 +5,7 @@ using UnityEngine;
 /// Stores data that will be passed as a texture to the shader in order to influence graphical representation.
 /// R: Current visibility of the cell.
 /// G: Exploration status of the cell.
-/// B: Whether the cell currently is in transition.
+/// B: 0-254: Moisture data; 255: When the cell currently is in visibility transition.
 /// A:
 /// </summary>
 public class HexCellShaderData : MonoBehaviour
@@ -81,6 +81,12 @@ public class HexCellShaderData : MonoBehaviour
 	public void ViewElevationChanged()
 	{
 		needsVisibilityReset = true;
+		enabled = true;
+	}
+
+	public void SetMapData(HexCell cell, float data)
+	{
+		cellTextureData[cell.Index].b = data < 0f ? (byte)0 : (data < 1f ? (byte)(data * 254f) : (byte)254);
 		enabled = true;
 	}
 

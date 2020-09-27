@@ -668,6 +668,11 @@ public class HexCell : MonoBehaviour
 		}
 	}
 
+	public void SetMapData(float data)
+	{
+		ShaderData.SetMapData(this, data);
+	}
+
 	public void Save(BinaryWriter writer)
 	{
 		writer.Write((byte)terrainTypeIndex);

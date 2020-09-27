@@ -8,6 +8,7 @@
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Specular("Specular", Color) = (0.2, 0.2, 0.2)
         _BackgroundColor("Background Color", Color) = (0,0,0)
+        [Toggle(SHOW_MAP_DATA)] _ShowMapData("Show Map Data", Float) = 0
     }
     SubShader
     {
@@ -18,6 +19,9 @@
 
         #pragma surface surf StandardSpecular fullforwardshadows vertex:vert
         #pragma multi_compile _ HEX_MAP_EDIT_MODE
+
+        #pragma shader_feature SHOW_MAP_DATA
+
         #pragma target 3.5
 
         #pragma multi_compile _ GRID_ON
@@ -32,6 +36,10 @@
             float3 worldPos;
             float3 terrain;
             float4 visibility;
+
+        #if defined(SHOW_MAP_DATA)
+            float mapData;
+        #endif
         };
 
         sampler2D _GridTex;
@@ -67,6 +75,10 @@
 
             // Combines the visibility into a single value
             data.visibility.w = cell0.y * v.color.x + cell1.y * v.color.y + cell2.y * v.color.z;
+
+        #if defined(SHOW_MAP_DATA)
+            data.mapData = cell0.z * v.color.x + cell1.z * v.color.y + cell2.z * v.color.z;
+        #endif
         }
 
         float4 GetTerrainColor(Input IN, int index) 
@@ -84,15 +96,20 @@
                 GetTerrainColor(IN, 2);
 
             fixed4 grid = 1;
-            #if defined(GRID_ON)
-                float2 gridUV = IN.worldPos.xz;
-                gridUV.x *= 1 / (4 * 8.66025404);
-                gridUV.y *= 1 / (2 * 15.0);
-                grid = tex2D(_GridTex, gridUV);
-            #endif
+
+        #if defined(GRID_ON)
+            float2 gridUV = IN.worldPos.xz;
+            gridUV.x *= 1 / (4 * 8.66025404);
+            gridUV.y *= 1 / (2 * 15.0);
+            grid = tex2D(_GridTex, gridUV);
+        #endif
 
             float explored = IN.visibility.w;
             o.Albedo = c.rgb * grid * _Color * explored;
+
+        #if defined(SHOW_MAP_DATA)
+            o.Albedo = IN.mapData * grid;
+        #endif
 
             o.Specular = _Specular * explored;
             o.Smoothness = _Glossiness;
