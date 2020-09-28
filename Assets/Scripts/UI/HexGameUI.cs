@@ -8,7 +8,13 @@ public class HexGameUI : MonoBehaviour
 	HexGrid grid = default;
 
 	[SerializeField]
+	HexMapGenerator mapGenerator = default;
+
+	[SerializeField]
 	HexTooltip tooltip = default;
+
+	[SerializeField]
+	GameObject dataOverlayPanel = default;
 
 	private HexCell currentCell;
 	private HexUnit selectedUnit;
@@ -73,6 +79,33 @@ public class HexGameUI : MonoBehaviour
 		else
 		{
 			Shader.DisableKeyword("HEX_MAP_EDIT_MODE");
+		}
+	}
+
+	public void ShowMapData(bool toggle)
+	{
+		if (toggle)
+		{
+			dataOverlayPanel.SetActive(true);
+			Shader.EnableKeyword("SHOW_MAP_DATA");
+		}
+		else
+		{
+			dataOverlayPanel.SetActive(false);
+			Shader.DisableKeyword("SHOW_MAP_DATA");
+		}
+	}
+
+	public void SetMapData(int option)
+	{
+		switch (option)
+		{
+			default:
+				mapGenerator.SetOverlayMoisture();
+				break;
+			case 1:
+				mapGenerator.SetOverlayRiverOrigin();
+				break;
 		}
 	}
 

@@ -9,6 +9,12 @@ public class HexMapGenerator : MonoBehaviour
         public int xMin, xMax, zMin, zMax;
     }
 
+    struct ClimateData
+    {
+        public float clouds;
+        public float moisture;
+    }
+
     [SerializeField]
     HexGrid grid = default;
 
@@ -60,9 +66,32 @@ public class HexMapGenerator : MonoBehaviour
     [SerializeField, Range(0, 100), Tooltip("Smoothens the terrain after creating landmasses. A value of 100 will remove any cliffs from the map, leaving only smooth, sloped terrain.")]
     int erosionPercentage = 50;
 
+    [SerializeField, Range(0f, 1f), Tooltip("Initial moisture levels for land cells. This can prevent excessively dry climates, especially on big landmasses.")]
+    float startingMoisture = 0.1f;
+
+    [SerializeField, Range(0f, 1f), Tooltip("Global evaporation of the map. Controls how much vapour each water cell generates per cycle.")]
+    float evaporationFactor = 0.5f;
+
+    [SerializeField, Range(0f, 1f), Tooltip("Global precipitation factor. Controls how much vapour each cloud will lose to rainfall each cycle.")]
+    float precipitationFactor = 0.25f;
+
+    [SerializeField, Range(0f, 1f), Tooltip("Controls how much moisture drains away after precipitating, flowing towards cells with lower elevation.")]
+    float runoffFactor = 0.25f;
+
+    [SerializeField, Range(0f, 1f), Tooltip("Controls how much moisture spreads across level terrain, and from water to land cells.")]
+    float seepageFactor = 0.125f;
+
+    [SerializeField, Tooltip("Controls the direction from which the wind is coming from.")]
+    HexDirection windDirection = HexDirection.NW;
+
+    [SerializeField, Range(1f, 10f), Tooltip("Wind pushes moisture in a specific direction. At strength 1, clouds disperse evenly in all directions.")]
+    float windStrength = 4f;
+
     private int cellCount;
     private int searchFrontierPhase;
     private List<MapRegion> regions;
+    private List<ClimateData> climate = new List<ClimateData>();
+    private List<ClimateData> nextClimate = new List<ClimateData>();
     private HexCellPriorityQueue searchFrontier;
 
     public void GenerateMap(int x, int z)
@@ -94,6 +123,8 @@ public class HexMapGenerator : MonoBehaviour
         CreateRegions();
         CreateLand();
         ErodeLand();
+        CreateClimate();
+        CreateRivers();
         SetTerrainType();
 
         for (int i = 0; i < cellCount; i++)
@@ -449,14 +480,210 @@ public class HexMapGenerator : MonoBehaviour
         return target;
     }
 
+    void CreateClimate()
+    {
+        climate.Clear();
+        nextClimate.Clear();
+		ClimateData initialData = new ClimateData { moisture = startingMoisture };
+		ClimateData clearData = new ClimateData();
+
+        for (int i = 0; i < cellCount; i++)
+        {
+            climate.Add(initialData);
+            nextClimate.Add(clearData);
+        }
+
+        for (int cycle = 0; cycle < 40; cycle++)
+        {
+            for (int i = 0; i < cellCount; i++)
+            {
+                EvolveClimate(i);
+            }
+            List<ClimateData> swap = climate;
+            climate = nextClimate;
+            nextClimate = swap;
+        }
+    }
+
+    void EvolveClimate(int cellIndex)
+    {
+        HexCell cell = grid.GetCell(cellIndex);
+        ClimateData cellClimate = climate[cellIndex];
+
+        if (cell.IsUnderwater)
+        {
+            cellClimate.moisture = 1f;
+            cellClimate.clouds += evaporationFactor;
+        }
+        else
+        {
+            float evaporation = cellClimate.moisture * evaporationFactor;
+            cellClimate.moisture -= evaporation;
+            cellClimate.clouds += evaporation;
+        }
+
+        float precipitation = cellClimate.clouds * precipitationFactor;
+        cellClimate.clouds -= precipitation;
+        cellClimate.moisture += precipitation;
+
+        // Higher elevation = lower temperatures = less water that the air can hold
+        float cloudMaximum = 1f - cell.ViewElevation / (elevationMaximum + 1f);
+        if (cellClimate.clouds > cloudMaximum)
+        {
+            cellClimate.moisture += cellClimate.clouds - cloudMaximum;
+            cellClimate.clouds = cloudMaximum;
+        }
+
+        HexDirection mainDispersalDirection = windDirection.Opposite();
+        float cloudDispersal = cellClimate.clouds * (1f / (5f + windStrength));
+        float runoff = cellClimate.moisture * runoffFactor * (1f / 6f);
+        float seepage = cellClimate.moisture * seepageFactor * (1f / 6f);
+
+        for (HexDirection d = HexDirection.NE; d <= HexDirection.NW; d++)
+        {
+            HexCell neighbor = cell.GetNeighbor(d);
+            if (!neighbor)
+            {
+                continue;
+            }
+
+            ClimateData neighborClimate = nextClimate[neighbor.Index];
+            if (d == mainDispersalDirection)
+            {
+                neighborClimate.clouds += cloudDispersal * windStrength;
+            }
+            else
+            {
+                neighborClimate.clouds += cloudDispersal;
+            }
+
+            int elevationDelta = neighbor.ViewElevation - cell.ViewElevation;
+            if (elevationDelta < 0)
+            {
+                cellClimate.moisture -= runoff;
+                neighborClimate.moisture += runoff;
+            }
+            else if (elevationDelta == 0)
+            {
+                cellClimate.moisture -= seepage;
+                neighborClimate.moisture += seepage;
+            }
+
+            nextClimate[neighbor.Index] = neighborClimate;
+        }
+
+        ClimateData nextCellClimate = nextClimate[cellIndex];
+        nextCellClimate.moisture += cellClimate.moisture;
+        if (nextCellClimate.moisture > 1f)
+        {
+            nextCellClimate.moisture = 1f;
+        }
+        nextClimate[cellIndex] = nextCellClimate;
+        climate[cellIndex] = new ClimateData();
+    }
+
+    void CreateRivers()
+    {
+        List<HexCell> riverOrigins = ListPool<HexCell>.Get();
+        for (int i = 0; i < cellCount; i++)
+        {
+            HexCell cell = grid.GetCell(i);
+            if (cell.IsUnderwater)
+            {
+                continue;
+            }
+            ClimateData data = climate[i];
+            float weight = data.moisture * (cell.Elevation - waterLevel) / (elevationMaximum - waterLevel);
+
+            if (weight > 0.75f)
+            {
+                riverOrigins.Add(cell);
+                riverOrigins.Add(cell);
+            }
+            if (weight > 0.5f)
+            {
+                riverOrigins.Add(cell);
+            }
+            if (weight > 0.25f)
+            {
+                riverOrigins.Add(cell);
+            }
+        }
+
+        ListPool<HexCell>.Add(riverOrigins);
+    }
+
     private void SetTerrainType()
     {
         for (int i = 0; i < cellCount; i++)
         {
             HexCell cell = grid.GetCell(i);
+            float moisture = climate[i].moisture;
+
             if (!cell.IsUnderwater)
             {
-                cell.TerrainTypeIndex = cell.Elevation - cell.WaterLevel;
+                if (moisture < 0.05f)
+                {
+                    cell.TerrainTypeIndex = 4;
+                }
+                else if (moisture < 0.12f)
+                {
+                    cell.TerrainTypeIndex = 0;
+                }
+                else if (moisture < 0.28f)
+                {
+                    cell.TerrainTypeIndex = 3;
+                }
+                else if (moisture < 0.85f)
+                {
+                    cell.TerrainTypeIndex = 1;
+                }
+                else
+                {
+                    cell.TerrainTypeIndex = 2;
+                }
+            }
+            else
+            {
+                // Use mud texture for underwater cells
+                cell.TerrainTypeIndex = 2;
+            }
+
+            cell.SetMapData(moisture);
+        }
+    }
+
+    public void SetOverlayMoisture()
+    {
+        for (int i = 0; i < cellCount; i++)
+        {
+            HexCell cell = grid.GetCell(i);
+            cell.SetMapData(climate[i].moisture);
+        }
+    }
+
+    public void SetOverlayRiverOrigin()
+	{
+        for (int i = 0; i < cellCount; i++)
+        {
+            HexCell cell = grid.GetCell(i);
+            float data = climate[i].moisture * (cell.Elevation - waterLevel) / (elevationMaximum - waterLevel);
+
+            if (data > 0.75f)
+            {
+                cell.SetMapData(1f);
+            }
+            else if (data > 0.5f)
+            {
+                cell.SetMapData(0.5f);
+            }
+            else if (data > 0.25f)
+            {
+                cell.SetMapData(0.25f);
+            }
+            else
+            {
+                cell.SetMapData(0f);
             }
         }
     }
