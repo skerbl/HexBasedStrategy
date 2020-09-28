@@ -19,12 +19,12 @@
 
         #pragma surface surf StandardSpecular fullforwardshadows vertex:vert
         #pragma multi_compile _ HEX_MAP_EDIT_MODE
+        #pragma multi_compile _ GRID_ON
 
         #pragma shader_feature SHOW_MAP_DATA
 
         #pragma target 3.5
 
-        #pragma multi_compile _ GRID_ON
 
         #include "HexCellData.cginc"
 
