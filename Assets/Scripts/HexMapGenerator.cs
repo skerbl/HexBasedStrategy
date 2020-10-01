@@ -18,6 +18,7 @@ public class HexMapGenerator : MonoBehaviour
     {
         public float clouds;
         public float moisture;
+        public float temperature;
     }
 
     [SerializeField]
@@ -771,7 +772,10 @@ public class HexMapGenerator : MonoBehaviour
         for (int i = 0; i < cellCount; i++)
         {
             HexCell cell = grid.GetCell(i);
-            float temperature = DetermineTemperature(cell);
+            ClimateData tempData = climate[i];
+            tempData.temperature = DetermineTemperature(cell);
+            climate[i] = tempData;
+
             float moisture = climate[i].moisture;
 
             if (!cell.IsUnderwater)
@@ -846,8 +850,7 @@ public class HexMapGenerator : MonoBehaviour
         for (int i = 0; i < cellCount; i++)
         {
             HexCell cell = grid.GetCell(i);
-            float temperature = DetermineTemperature(cell);
-            cell.SetMapData(temperature);
+            cell.SetMapData(climate[i].temperature);
         }
     }
 
