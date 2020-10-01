@@ -106,6 +106,9 @@ public class HexGameUI : MonoBehaviour
 			case 1:
 				mapGenerator.SetOverlayRiverOrigin();
 				break;
+			case 2:
+				mapGenerator.SetOverlayTemperature();
+				break;
 		}
 	}
 

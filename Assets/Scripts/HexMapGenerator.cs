@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class HexMapGenerator : MonoBehaviour
 {
+    public enum HemisphereMode
+    {
+        Both, North, South
+    }
+
     struct MapRegion
     {
         public int xMin, xMax, zMin, zMax;
@@ -93,9 +98,22 @@ public class HexMapGenerator : MonoBehaviour
     [SerializeField, Range(0f, 1f)]
     float extraLakeProbability = 0.25f;
 
+    [SerializeField, Range(0f, 1f)]
+    float lowTemperature = 0f;
+
+    [SerializeField, Range(0f, 1f)]
+    float highTemperature = 1f;
+
+    [SerializeField, Range(0f, 1f)]
+    float temperatureJitter = 0.1f;
+
+    [SerializeField]
+    HemisphereMode hemisphere;
+
     private int cellCount;
     private int landCells;
     private int searchFrontierPhase;
+    private int temperatureJitterChannel;
     private List<MapRegion> regions;
     private List<ClimateData> climate = new List<ClimateData>();
     private List<ClimateData> nextClimate = new List<ClimateData>();
@@ -748,9 +766,12 @@ public class HexMapGenerator : MonoBehaviour
 
     private void SetTerrainType()
     {
+        temperatureJitterChannel = Random.Range(0, 4);
+
         for (int i = 0; i < cellCount; i++)
         {
             HexCell cell = grid.GetCell(i);
+            float temperature = DetermineTemperature(cell);
             float moisture = climate[i].moisture;
 
             if (!cell.IsUnderwater)
@@ -786,12 +807,47 @@ public class HexMapGenerator : MonoBehaviour
         }
     }
 
+    float DetermineTemperature(HexCell cell)
+    {
+        float latitude = (float)cell.coordinates.Z / grid.cellCountZ;
+
+        if (hemisphere == HemisphereMode.Both)
+        {
+            latitude *= 2f;
+            if (latitude > 1f)
+            {
+                latitude = 2f - latitude;
+            }
+        }
+        else if (hemisphere == HemisphereMode.North)
+        {
+            latitude = 1f - latitude;
+        }
+
+        float temperature = Mathf.LerpUnclamped(lowTemperature, highTemperature, latitude);
+        temperature *= 1f - (cell.ViewElevation - waterLevel) / (elevationMaximum - waterLevel + 1f);
+        float jitter = HexMetrics.SampleNoise(cell.Position * 0.1f)[temperatureJitterChannel];
+        temperature += (jitter * 2f - 1f) * temperatureJitter;
+
+        return temperature;
+    }
+
     public void SetOverlayMoisture()
     {
         for (int i = 0; i < cellCount; i++)
         {
             HexCell cell = grid.GetCell(i);
             cell.SetMapData(climate[i].moisture);
+        }
+    }
+
+    public void SetOverlayTemperature()
+	{
+        for (int i = 0; i < cellCount; i++)
+        {
+            HexCell cell = grid.GetCell(i);
+            float temperature = DetermineTemperature(cell);
+            cell.SetMapData(temperature);
         }
     }
 
