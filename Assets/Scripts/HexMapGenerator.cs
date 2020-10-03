@@ -145,7 +145,7 @@ public class HexMapGenerator : MonoBehaviour
     private List<HexDirection> flowDirections = new List<HexDirection>();
     private HexCellPriorityQueue searchFrontier;
 
-    public void GenerateMap(int x, int z)
+    public void GenerateMap(int x, int z, bool wrapping)
     {
         Random.State originalRandomState = Random.state;
 
@@ -160,7 +160,7 @@ public class HexMapGenerator : MonoBehaviour
         Random.InitState(seed);
 
         cellCount = x * z;
-        grid.CreateMap(x, z);
+        grid.CreateMap(x, z, wrapping);
         if (searchFrontier == null)
         {
             searchFrontier = new HexCellPriorityQueue();
