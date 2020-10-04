@@ -1,59 +1,53 @@
 ﻿using UnityEngine;
 
-public class NewMapMenu : MonoBehaviour
-{
-	[SerializeField]
-	HexGrid hexGrid = default;
+public class NewMapMenu : MonoBehaviour {
 
-	[SerializeField]
-	HexMapGenerator mapGenerator = default;
+	public HexGrid hexGrid;
 
-	private bool generateMaps = true;
+	public HexMapGenerator mapGenerator;
 
-	public void Open()
+	bool generateMaps = true;
+	bool wrapping = true;
+
+	public void ToggleMapGeneration (bool toggle) {
+		generateMaps = toggle;
+	}
+
+	public void ToggleWrapping(bool toggle)
 	{
+		wrapping = toggle;
+	}
+
+	public void Open () {
 		gameObject.SetActive(true);
 		HexMapCamera.Locked = true;
 	}
 
-	public void Close()
-	{
+	public void Close () {
 		gameObject.SetActive(false);
 		HexMapCamera.Locked = false;
 	}
 
-	public void ToggleMapGeneration(bool toggle)
-	{
-		generateMaps = toggle;
-	}
-
-	void CreateMap(int x, int z)
-	{
-		if (generateMaps)
-		{
-			mapGenerator.GenerateMap(x, z);
-		}
-		else
-		{
-			hexGrid.CreateMap(x, z);
-		}
-
-		HexMapCamera.ValidatePosition();
-		Close();
-	}
-
-	public void CreateSmallMap()
-	{
+	public void CreateSmallMap () {
 		CreateMap(20, 15);
 	}
 
-	public void CreateMediumMap()
-	{
+	public void CreateMediumMap () {
 		CreateMap(40, 30);
 	}
 
-	public void CreateLargeMap()
-	{
+	public void CreateLargeMap () {
 		CreateMap(80, 60);
+	}
+
+	void CreateMap (int x, int z) {
+		if (generateMaps) {
+			mapGenerator.GenerateMap(x, z, wrapping);
+		}
+		else {
+			hexGrid.CreateMap(x, z, wrapping);
+		}
+		HexMapCamera.ValidatePosition();
+		Close();
 	}
 }
